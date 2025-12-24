@@ -28,7 +28,9 @@ feature {NONE} -- Initialization
 			name := a_name.to_string_32
 			create description.make_empty
 			create file_path.make_empty
+			create generics.make_empty
 			create features.make (10)
+			create parents.make (3)
 		ensure
 			library_set: library.same_string_general (a_library)
 			name_set: name.same_string_general (a_name)
@@ -46,7 +48,12 @@ feature {NONE} -- Initialization
 			name := a_row.string_value ("name")
 			description := a_row.string_value ("description")
 			file_path := a_row.string_value ("file_path")
+			is_deferred := a_row.integer_value ("is_deferred") = 1
+			is_expanded := a_row.integer_value ("is_expanded") = 1
+			is_frozen := a_row.integer_value ("is_frozen") = 1
+			generics := a_row.string_value ("generics")
 			create features.make (10)
+			create parents.make (3)
 		end
 
 feature -- Access
@@ -65,6 +72,21 @@ feature -- Access
 
 	file_path: STRING_32
 			-- Path to source file
+
+	is_deferred: BOOLEAN
+			-- Is this a deferred (abstract) class?
+
+	is_expanded: BOOLEAN
+			-- Is this an expanded (value) class?
+
+	is_frozen: BOOLEAN
+			-- Is this a frozen (non-inheritable) class?
+
+	generics: STRING_32
+			-- Generic parameters with constraints (e.g., "[G -> COMPARABLE]")
+
+	parents: ARRAYED_LIST [STRING_32]
+			-- Parent class names
 
 	features: ARRAYED_LIST [KB_FEATURE_INFO]
 			-- Features of this class
@@ -122,6 +144,36 @@ feature -- Setters
 			-- Set file path
 		do
 			file_path := a_path.to_string_32
+		end
+
+	set_deferred (a_val: BOOLEAN)
+			-- Set deferred status
+		do
+			is_deferred := a_val
+		end
+
+	set_expanded (a_val: BOOLEAN)
+			-- Set expanded status
+		do
+			is_expanded := a_val
+		end
+
+	set_frozen (a_val: BOOLEAN)
+			-- Set frozen status
+		do
+			is_frozen := a_val
+		end
+
+	set_generics (a_generics: READABLE_STRING_GENERAL)
+			-- Set generic parameters
+		do
+			generics := a_generics.to_string_32
+		end
+
+	add_parent (a_parent: READABLE_STRING_GENERAL)
+			-- Add parent class name
+		do
+			parents.extend (a_parent.to_string_32)
 		end
 
 	add_feature (a_feature: KB_FEATURE_INFO)
@@ -240,5 +292,6 @@ invariant
 	library_not_empty: not library.is_empty
 	name_not_empty: not name.is_empty
 	features_not_void: features /= Void
+	parents_not_void: parents /= Void
 
 end

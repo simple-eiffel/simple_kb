@@ -28,5 +28,6 @@
 	</target>
 	<target name="kb_cli" extends="simple_kb">
 		<root class="KB_CLI_APP" feature="make"/>
+		<setting name="executable_name" value="kb"/>
 	</target>
 </system>

@@ -80,6 +80,22 @@ feature -- Tests
 			io.put_string ("%NRosetta Importer Tests:%N")
 			run_test (agent lib_tests.test_rosetta_importer_create, "test_rosetta_importer_create")
 			run_test (agent lib_tests.test_rosetta_import_all, "test_rosetta_import_all")
+
+			io.put_string ("%NClass Metadata Tests:%N")
+			run_test (agent lib_tests.test_class_deferred, "test_class_deferred")
+			run_test (agent lib_tests.test_class_parents, "test_class_parents")
+
+			io.put_string ("%NAncestry Tests:%N")
+			run_test (agent lib_tests.test_ancestry_simple, "test_ancestry_simple")
+			run_test (agent lib_tests.test_diamond_inheritance, "test_diamond_inheritance")
+
+			io.put_string ("%NFeature Metadata Tests:%N")
+			run_test (agent lib_tests.test_feature_deferred, "test_feature_deferred")
+			run_test (agent lib_tests.test_feature_once, "test_feature_once")
+
+			io.put_string ("%NEdge Case Tests:%N")
+			run_test (agent lib_tests.test_class_no_parents, "test_class_no_parents")
+			run_test (agent lib_tests.test_unknown_class_ancestry, "test_unknown_class_ancestry")
 		end
 
 	run_test (a_test: PROCEDURE; a_name: STRING)

@@ -135,6 +135,7 @@ feature -- Schema
 		do
 			create_classes_table
 			create_features_table
+			create_class_parents_table
 			create_examples_table
 			create_errors_table
 			create_patterns_table
@@ -154,6 +155,10 @@ feature {NONE} -- Schema Creation
 					name TEXT NOT NULL,
 					description TEXT,
 					file_path TEXT,
+					is_deferred INTEGER DEFAULT 0,
+					is_expanded INTEGER DEFAULT 0,
+					is_frozen INTEGER DEFAULT 0,
+					generics TEXT,
 					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 					UNIQUE(library, name)
 				)
@@ -171,6 +176,9 @@ feature {NONE} -- Schema Creation
 					signature TEXT,
 					description TEXT,
 					kind TEXT,
+					is_deferred INTEGER DEFAULT 0,
+					is_frozen INTEGER DEFAULT 0,
+					is_once INTEGER DEFAULT 0,
 					preconditions TEXT,
 					postconditions TEXT,
 					UNIQUE(class_id, name)
@@ -240,6 +248,20 @@ feature {NONE} -- Schema Creation
 			]")
 		end
 
+	create_class_parents_table
+			-- Create class_parents table for inheritance tracking
+		do
+			db.execute ("[
+				CREATE TABLE IF NOT EXISTS class_parents (
+					id INTEGER PRIMARY KEY,
+					class_id INTEGER REFERENCES classes(id),
+					parent_name TEXT NOT NULL,
+					conforming INTEGER DEFAULT 1,
+					UNIQUE(class_id, parent_name)
+				)
+			]")
+		end
+
 	create_fts5_index
 			-- Create FTS5 full-text search virtual table
 		do
@@ -259,6 +281,7 @@ feature -- Search
 
 	search (a_query: READABLE_STRING_GENERAL; a_limit: INTEGER): ARRAYED_LIST [KB_RESULT]
 			-- Search knowledge base with FTS5
+			-- Multi-word queries use AND logic (all words must appear)
 		require
 			is_open: is_open
 			query_not_empty: not a_query.is_empty
@@ -271,11 +294,9 @@ feature -- Search
 		do
 			create Result.make (a_limit)
 
-			-- Format query for FTS5 (quote the term)
-			create l_fts_query.make (a_query.count + 4)
-			l_fts_query.append_character ('"')
-			l_fts_query.append_string_general (a_query)
-			l_fts_query.append_character ('"')
+			-- Format query for FTS5
+			-- Multi-word: join with AND for "all words must match"
+			l_fts_query := format_fts5_query (a_query)
 
 			-- FTS5 search with BM25 ranking
 			l_sql := "SELECT content_type, content_id, title, body, bm25(kb_search) as rank FROM kb_search WHERE kb_search MATCH ? ORDER BY rank LIMIT " + a_limit.out
@@ -383,6 +404,30 @@ feature -- Class Operations
 			if not l_result.is_empty then
 				create Result.make_from_row (l_result.rows.first)
 				load_class_features (Result)
+				load_class_parents (Result)
+			end
+		end
+
+	search_classes (a_query: READABLE_STRING_GENERAL; a_limit: INTEGER): ARRAYED_LIST [KB_CLASS_INFO]
+			-- Search for classes by partial name match
+		require
+			is_open: is_open
+			positive_limit: a_limit > 0
+		local
+			l_result: SIMPLE_SQL_RESULT
+			l_class: KB_CLASS_INFO
+			l_pattern: STRING
+		do
+			create Result.make (a_limit)
+			l_pattern := "%%" + a_query.out.as_upper + "%%"
+			l_result := db.query_with_args (
+				"SELECT * FROM classes WHERE UPPER(name) LIKE ? ORDER BY name LIMIT " + a_limit.out,
+				<<l_pattern>>
+			)
+			across l_result.rows as row loop
+				create l_class.make_from_row (row)
+				load_class_features (l_class)
+				Result.extend (l_class)
 			end
 		end
 
@@ -394,17 +439,24 @@ feature -- Class Operations
 		do
 			db.execute_with_args ("[
 				INSERT OR REPLACE INTO classes
-				(library, name, description, file_path)
-				VALUES (?, ?, ?, ?)
+				(library, name, description, file_path, is_deferred, is_expanded, is_frozen, generics)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 			]", <<
 				a_class.library,
 				a_class.name,
 				a_class.description,
-				a_class.file_path
+				a_class.file_path,
+				bool_to_int (a_class.is_deferred),
+				bool_to_int (a_class.is_expanded),
+				bool_to_int (a_class.is_frozen),
+				a_class.generics
 			>>)
 
 			-- Get the ID for FTS5 update
 			a_class.set_id (db.last_insert_rowid.to_integer_32)
+
+			-- Store parents
+			store_class_parents (a_class)
 
 			-- Update FTS5 index
 			update_fts5_class (a_class)
@@ -432,6 +484,67 @@ feature {NONE} -- Class Helpers
 
 feature -- Feature Operations
 
+	find_feature (a_class_name, a_feature_name: READABLE_STRING_GENERAL): detachable KB_FEATURE_INFO
+			-- Find feature by class name and feature name
+		require
+			is_open: is_open
+		local
+			l_result: SIMPLE_SQL_RESULT
+			l_class_id: INTEGER
+		do
+			-- First find the class ID
+			l_result := db.query_with_args (
+				"SELECT id FROM classes WHERE name = ? COLLATE NOCASE LIMIT 1",
+				<<a_class_name.to_string_32>>
+			)
+			if not l_result.is_empty then
+				if attached l_result.rows.first.item (1) as val then
+					l_class_id := val.out.to_integer
+				end
+				-- Now find the feature
+				l_result := db.query_with_args (
+					"SELECT * FROM features WHERE class_id = ? AND name = ? COLLATE NOCASE LIMIT 1",
+					<<l_class_id, a_feature_name.to_string_32>>
+				)
+				if not l_result.is_empty then
+					create Result.make_from_row (l_result.rows.first)
+				end
+			end
+		end
+
+	search_features (a_class_name, a_query: READABLE_STRING_GENERAL; a_limit: INTEGER): ARRAYED_LIST [KB_FEATURE_INFO]
+			-- Search features in a class by partial name match
+		require
+			is_open: is_open
+			positive_limit: a_limit > 0
+		local
+			l_result: SIMPLE_SQL_RESULT
+			l_feature: KB_FEATURE_INFO
+			l_class_id: INTEGER
+			l_pattern: STRING
+		do
+			create Result.make (a_limit)
+			-- First find the class ID
+			l_result := db.query_with_args (
+				"SELECT id FROM classes WHERE name = ? COLLATE NOCASE LIMIT 1",
+				<<a_class_name.to_string_32>>
+			)
+			if not l_result.is_empty then
+				if attached l_result.rows.first.item (1) as val then
+					l_class_id := val.out.to_integer
+				end
+				l_pattern := "%%" + a_query.out.as_lower + "%%"
+				l_result := db.query_with_args (
+					"SELECT * FROM features WHERE class_id = ? AND LOWER(name) LIKE ? ORDER BY name LIMIT " + a_limit.out,
+					<<l_class_id, l_pattern>>
+				)
+				across l_result.rows as row loop
+					create l_feature.make_from_row (row)
+					Result.extend (l_feature)
+				end
+			end
+		end
+
 	add_feature (a_feature: KB_FEATURE_INFO)
 			-- Add or update feature entry
 		require
@@ -440,14 +553,17 @@ feature -- Feature Operations
 		do
 			db.execute_with_args ("[
 				INSERT OR REPLACE INTO features
-				(class_id, name, signature, description, kind, preconditions, postconditions)
-				VALUES (?, ?, ?, ?, ?, ?, ?)
+				(class_id, name, signature, description, kind, is_deferred, is_frozen, is_once, preconditions, postconditions)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			]", <<
 				a_feature.class_id,
 				a_feature.name,
 				a_feature.signature,
 				a_feature.description,
 				a_feature.kind,
+				bool_to_int (a_feature.is_deferred),
+				bool_to_int (a_feature.is_frozen),
+				bool_to_int (a_feature.is_once),
 				a_feature.preconditions_json,
 				a_feature.postconditions_json
 			>>)
@@ -468,6 +584,24 @@ feature -- Example Operations
 			l_result := db.query_with_args (
 				"SELECT * FROM examples WHERE title = ? COLLATE NOCASE LIMIT 1",
 				<<a_title.to_string_32>>
+			)
+			if not l_result.is_empty then
+				create Result.make_from_row (l_result.rows.first)
+			end
+		end
+
+	find_example_like (a_title: READABLE_STRING_GENERAL): detachable KB_EXAMPLE
+			-- Find example with title containing search term
+		require
+			is_open: is_open
+		local
+			l_result: SIMPLE_SQL_RESULT
+			l_pattern: STRING
+		do
+			l_pattern := "%%" + a_title.out + "%%"
+			l_result := db.query_with_args (
+				"SELECT * FROM examples WHERE title LIKE ? COLLATE NOCASE LIMIT 1",
+				<<l_pattern>>
 			)
 			if not l_result.is_empty then
 				create Result.make_from_row (l_result.rows.first)
@@ -602,6 +736,111 @@ feature -- Statistics
 			end
 		end
 
+feature {NONE} -- FTS5 Query Formatting
+
+	format_fts5_query (a_query: READABLE_STRING_GENERAL): STRING_32
+			-- Format query for FTS5 search
+			-- Filters stop words, joins remaining with AND
+		local
+			l_words: LIST [STRING_32]
+			l_word: STRING_32
+			l_lower: STRING_32
+		do
+			create Result.make (a_query.count + 20)
+			l_words := a_query.to_string_32.split (' ')
+			
+			from l_words.start until l_words.after loop
+				l_word := l_words.item
+				l_word.left_adjust
+				l_word.right_adjust
+				if not l_word.is_empty then
+					-- Strip punctuation from word
+					l_word := strip_punctuation (l_word)
+					l_lower := l_word.as_lower
+					if not l_word.is_empty and then not is_stop_word (l_lower) then
+						if Result.count > 0 then
+							Result.append (" AND ")
+						end
+						Result.append (l_word)
+						Result.append_character ('*')
+					end
+				end
+				l_words.forth
+			end
+			
+			-- Fallback: if all words were stop words, use original query
+			if Result.is_empty then
+				Result.append_string_general (a_query)
+				Result.append_character ('*')
+			end
+		ensure
+			result_not_empty: not Result.is_empty
+		end
+
+	is_stop_word (a_word: STRING_32): BOOLEAN
+			-- Is this a common stop word to filter out?
+		do
+			Result := stop_words.has (a_word)
+		end
+
+	stop_words: ARRAYED_SET [STRING_32]
+			-- Common English stop words
+		once
+			create Result.make (50)
+			Result.compare_objects
+			-- Articles/determiners
+			Result.extend ("a"); Result.extend ("an"); Result.extend ("the")
+			-- Pronouns
+			Result.extend ("i"); Result.extend ("me"); Result.extend ("my")
+			Result.extend ("you"); Result.extend ("your"); Result.extend ("we")
+			Result.extend ("it"); Result.extend ("its"); Result.extend ("this")
+			Result.extend ("that"); Result.extend ("these"); Result.extend ("those")
+			-- Prepositions
+			Result.extend ("in"); Result.extend ("on"); Result.extend ("at")
+			Result.extend ("to"); Result.extend ("for"); Result.extend ("of")
+			Result.extend ("with"); Result.extend ("by"); Result.extend ("from")
+			Result.extend ("about"); Result.extend ("into"); Result.extend ("through")
+			-- Conjunctions
+			Result.extend ("and"); Result.extend ("or"); Result.extend ("but")
+			Result.extend ("if"); Result.extend ("then"); Result.extend ("so")
+			-- Verbs (common)
+			Result.extend ("is"); Result.extend ("are"); Result.extend ("was")
+			Result.extend ("be"); Result.extend ("been"); Result.extend ("being")
+			Result.extend ("have"); Result.extend ("has"); Result.extend ("had")
+			Result.extend ("do"); Result.extend ("does"); Result.extend ("did")
+			Result.extend ("can"); Result.extend ("could"); Result.extend ("would")
+			Result.extend ("should"); Result.extend ("will"); Result.extend ("shall")
+			-- Question words
+			Result.extend ("how"); Result.extend ("what"); Result.extend ("when")
+			Result.extend ("where"); Result.extend ("why"); Result.extend ("which")
+			Result.extend ("who"); Result.extend ("whom")
+			-- Other common
+			Result.extend ("use"); Result.extend ("using")
+			Result.extend ("get"); Result.extend ("make"); Result.extend ("create")
+		end
+
+	strip_punctuation (a_word: STRING_32): STRING_32
+			-- Remove leading/trailing punctuation from word
+		local
+			i, j: INTEGER
+		do
+			create Result.make_from_string (a_word)
+			-- Strip trailing punctuation
+			from i := Result.count until i < 1 or else Result.item (i).is_alpha_numeric loop
+				i := i - 1
+			end
+			if i < Result.count then
+				Result.keep_head (i)
+			end
+			-- Strip leading punctuation
+			from j := 1 until j > Result.count or else Result.item (j).is_alpha_numeric loop
+				j := j + 1
+			end
+			if j > 1 then
+				Result.remove_head (j - 1)
+			end
+		end
+
 feature {NONE} -- FTS5 Index Updates
 
 	update_fts5_error (a_error: KB_ERROR_INFO)
@@ -694,6 +933,269 @@ feature {NONE} -- FTS5 Index Updates
 				a_pattern.description + " " + a_pattern.code,
 				"pattern design"
 			>>)
+		end
+
+feature -- Clear Operations
+
+	library_class_count (a_library: READABLE_STRING_GENERAL): INTEGER
+			-- Count of classes in library
+		require
+			is_open: is_open
+		do
+			Result := safe_count ("SELECT COUNT(*) FROM classes WHERE library = '" + a_library.out + "'")
+		end
+
+	clear_library (a_library: READABLE_STRING_GENERAL)
+			-- Delete all classes and features for a specific library
+		require
+			is_open: is_open
+		local
+			l_class_ids: STRING
+			l_result: SIMPLE_SQL_RESULT
+		do
+			-- Get class IDs for this library
+			l_result := db.query_with_args (
+				"SELECT id FROM classes WHERE library = ?",
+				<<a_library.to_string_32>>
+			)
+			
+			if not l_result.is_empty then
+				-- Build comma-separated list of IDs
+				create l_class_ids.make (100)
+				across l_result.rows as row loop
+					if not l_class_ids.is_empty then
+						l_class_ids.append (",")
+					end
+					if attached row.item (1) as id then
+						l_class_ids.append (id.out)
+					end
+				end
+				
+				-- Delete from FTS index
+				db.execute ("DELETE FROM kb_search WHERE content_type = 'class' AND content_id IN (" + l_class_ids + ")")
+				db.execute ("DELETE FROM kb_search WHERE content_type = 'feature' AND content_id IN (SELECT id FROM features WHERE class_id IN (" + l_class_ids + "))")
+				
+				-- Delete features then classes
+				db.execute ("DELETE FROM features WHERE class_id IN (" + l_class_ids + ")")
+				db.execute_with_args ("DELETE FROM classes WHERE library = ?", <<a_library.to_string_32>>)
+			end
+		end
+
+	clear_all
+			-- Delete all data from all tables
+		require
+			is_open: is_open
+		do
+			db.execute ("DELETE FROM kb_search")
+			db.execute ("DELETE FROM features")
+			db.execute ("DELETE FROM classes")
+			db.execute ("DELETE FROM examples")
+			db.execute ("DELETE FROM errors")
+			db.execute ("DELETE FROM patterns")
+			db.execute ("DELETE FROM translations")
+		end
+
+	clear_classes
+			-- Delete all classes and features
+		require
+			is_open: is_open
+		do
+			db.execute ("DELETE FROM kb_search WHERE content_type IN ('class', 'feature')")
+			db.execute ("DELETE FROM features")
+			db.execute ("DELETE FROM classes")
+		end
+
+	clear_examples
+			-- Delete all examples
+		require
+			is_open: is_open
+		do
+			db.execute ("DELETE FROM kb_search WHERE content_type = 'example'")
+			db.execute ("DELETE FROM examples")
+		end
+
+	clear_errors
+			-- Delete all error codes
+		require
+			is_open: is_open
+		do
+			db.execute ("DELETE FROM kb_search WHERE content_type = 'error'")
+			db.execute ("DELETE FROM errors")
+		end
+
+	clear_patterns
+			-- Delete all patterns
+		require
+			is_open: is_open
+		do
+			db.execute ("DELETE FROM kb_search WHERE content_type = 'pattern'")
+			db.execute ("DELETE FROM patterns")
+		end
+
+feature {NONE} -- Parent Operations
+
+	store_class_parents (a_class: KB_CLASS_INFO)
+			-- Store parent relationships for a class
+		require
+			class_has_id: a_class.id > 0
+		do
+			-- Delete existing parents for this class
+			db.execute_with_args ("DELETE FROM class_parents WHERE class_id = ?", <<a_class.id>>)
+			-- Insert new parents
+			across a_class.parents as p loop
+				db.execute_with_args (
+					"INSERT INTO class_parents (class_id, parent_name) VALUES (?, ?)",
+					<<a_class.id, p>>
+				)
+			end
+		end
+
+	load_class_parents (a_class: KB_CLASS_INFO)
+			-- Load parent relationships for a class
+		require
+			class_has_id: a_class.id > 0
+		local
+			l_result: SIMPLE_SQL_RESULT
+		do
+			l_result := db.query_with_args (
+				"SELECT parent_name FROM class_parents WHERE class_id = ? ORDER BY parent_name",
+				<<a_class.id>>
+			)
+			across l_result.rows as row loop
+				if attached row.item (1) as val then
+					a_class.add_parent (val.out)
+				end
+			end
+		end
+
+feature -- Ancestry Queries
+
+	get_ancestors (a_class_name: READABLE_STRING_GENERAL): ARRAYED_LIST [STRING_32]
+			-- Get all ancestor class names (direct and indirect parents)
+		require
+			is_open: is_open
+		local
+			l_to_check: ARRAYED_LIST [STRING_32]
+			l_parent: STRING_32
+			l_result: SIMPLE_SQL_RESULT
+		do
+			create Result.make (10)
+			Result.compare_objects
+			create l_to_check.make (5)
+			l_to_check.compare_objects
+			l_to_check.extend (a_class_name.to_string_32.as_upper)
+
+			from until l_to_check.is_empty loop
+				l_parent := l_to_check.first
+				l_to_check.start
+				l_to_check.remove
+				
+				l_result := db.query_with_args ("[
+					SELECT cp.parent_name FROM class_parents cp
+					JOIN classes c ON c.id = cp.class_id
+					WHERE UPPER(c.name) = ?
+				]", <<l_parent>>)
+				
+				across l_result.rows as row loop
+					if attached row.item (1) as val then
+						l_parent := val.out.to_string_32.as_upper
+						if not Result.has (l_parent) then
+							Result.extend (l_parent)
+							l_to_check.extend (l_parent)
+						end
+					end
+				end
+			end
+		end
+
+	get_descendants (a_class_name: READABLE_STRING_GENERAL): ARRAYED_LIST [STRING_32]
+			-- Get all descendant class names (direct and indirect children)
+		require
+			is_open: is_open
+		local
+			l_to_check: ARRAYED_LIST [STRING_32]
+			l_child: STRING_32
+			l_result: SIMPLE_SQL_RESULT
+		do
+			create Result.make (10)
+			Result.compare_objects
+			create l_to_check.make (5)
+			l_to_check.compare_objects
+			l_to_check.extend (a_class_name.to_string_32.as_upper)
+
+			from until l_to_check.is_empty loop
+				l_child := l_to_check.first
+				l_to_check.start
+				l_to_check.remove
+				
+				l_result := db.query_with_args ("[
+					SELECT c.name FROM classes c
+					JOIN class_parents cp ON cp.class_id = c.id
+					WHERE UPPER(cp.parent_name) = ?
+				]", <<l_child>>)
+				
+				across l_result.rows as row loop
+					if attached row.item (1) as val then
+						l_child := val.out.to_string_32.as_upper
+						if not Result.has (l_child) then
+							Result.extend (l_child)
+							l_to_check.extend (l_child)
+						end
+					end
+				end
+			end
+		end
+
+	get_direct_parents (a_class_name: READABLE_STRING_GENERAL): ARRAYED_LIST [STRING_32]
+			-- Get direct parent class names only
+		require
+			is_open: is_open
+		local
+			l_result: SIMPLE_SQL_RESULT
+		do
+			create Result.make (5)
+			l_result := db.query_with_args ("[
+				SELECT cp.parent_name FROM class_parents cp
+				JOIN classes c ON c.id = cp.class_id
+				WHERE UPPER(c.name) = ?
+			]", <<a_class_name.to_string_32.as_upper>>)
+			
+			across l_result.rows as row loop
+				if attached row.item (1) as val then
+					Result.extend (val.out.to_string_32)
+				end
+			end
+		end
+
+	get_direct_children (a_class_name: READABLE_STRING_GENERAL): ARRAYED_LIST [STRING_32]
+			-- Get direct child class names only
+		require
+			is_open: is_open
+		local
+			l_result: SIMPLE_SQL_RESULT
+		do
+			create Result.make (10)
+			l_result := db.query_with_args ("[
+				SELECT c.name FROM classes c
+				JOIN class_parents cp ON cp.class_id = c.id
+				WHERE UPPER(cp.parent_name) = ?
+			]", <<a_class_name.to_string_32.as_upper>>)
+			
+			across l_result.rows as row loop
+				if attached row.item (1) as val then
+					Result.extend (val.out.to_string_32)
+				end
+			end
+		end
+
+feature {NONE} -- Helpers
+
+	bool_to_int (a_bool: BOOLEAN): INTEGER
+			-- Convert boolean to integer for SQLite
+		do
+			if a_bool then
+				Result := 1
+			end
 		end
 
 feature -- Cleanup

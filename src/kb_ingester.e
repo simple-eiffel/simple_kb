@@ -96,7 +96,7 @@ feature -- Ingestion
 				files_processed := files_processed + 1
 
 				-- Check file exists
-				create l_file.make (a_file_path.out)
+				create l_file.make_with_name (a_file_path.out)
 				if not l_file.exists then
 					errors_count := errors_count + 1
 					last_error := "File not found: " + a_file_path.out
@@ -116,6 +116,16 @@ feature -- Ingestion
 							l_class.set_description (cls.header_comment.to_string_32)
 							l_class.set_file_path (a_file_path.to_string_32)
 
+							-- Set class modifiers
+							l_class.set_deferred (cls.is_deferred)
+							l_class.set_expanded (cls.is_expanded)
+							l_class.set_frozen (cls.is_frozen)
+
+							-- Extract parents
+							across cls.parents as p loop
+								l_class.add_parent (p.parent_name.to_string_32)
+							end
+
 							-- Add to database
 							db.add_class (l_class)
 							classes_indexed := classes_indexed + 1
@@ -126,6 +136,11 @@ feature -- Ingestion
 								l_feature.set_signature (feat.signature.to_string_32)
 								l_feature.set_description (feat.header_comment.to_string_32)
 								l_feature.set_kind (feat.kind_string.to_string_32)
+
+								-- Set feature modifiers
+								l_feature.set_deferred (feat.is_deferred)
+								l_feature.set_frozen (feat.is_frozen)
+								l_feature.set_once (feat.is_once)
 
 								-- Add contracts if present
 								if not feat.precondition.is_empty then

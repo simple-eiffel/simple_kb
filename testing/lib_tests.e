@@ -404,6 +404,160 @@ feature -- Rosetta Importer Tests
 			assert ("found_sort_examples", not l_examples.is_empty)
 		end
 
+feature -- Class Metadata Tests
+
+	test_class_deferred
+			-- Test deferred class flag
+		local
+			l_class: KB_CLASS_INFO
+			l_found: detachable KB_CLASS_INFO
+		do
+			create l_class.make ("test_lib", "DEFERRED_CLASS")
+			l_class.set_deferred (True)
+			l_class.set_description ("A deferred class")
+			db.add_class (l_class)
+			assert ("no_error", not db.has_error)
+			l_found := db.find_class ("DEFERRED_CLASS")
+			assert ("class_found", l_found /= Void)
+			if attached l_found as cls then
+				assert ("is_deferred", cls.is_deferred)
+			end
+		end
+
+	test_class_parents
+			-- Test parent class tracking
+		local
+			l_class: KB_CLASS_INFO
+			l_found: detachable KB_CLASS_INFO
+		do
+			create l_class.make ("test_lib", "CHILD_CLASS")
+			l_class.add_parent ("PARENT_A")
+			l_class.add_parent ("PARENT_B")
+			db.add_class (l_class)
+			l_found := db.find_class ("CHILD_CLASS")
+			assert ("class_found", l_found /= Void)
+			if attached l_found as cls then
+				assert ("has_two_parents", cls.parents.count = 2)
+			end
+		end
+
+feature -- Ancestry Tests
+
+	test_ancestry_simple
+			-- Test simple parent-child ancestry
+		local
+			l_parent, l_child: KB_CLASS_INFO
+			l_ancestors, l_descendants: ARRAYED_LIST [STRING_32]
+		do
+			create l_parent.make ("test_lib", "ANCESTOR_A")
+			db.add_class (l_parent)
+			create l_child.make ("test_lib", "DESCENDANT_A")
+			l_child.add_parent ("ANCESTOR_A")
+			db.add_class (l_child)
+			l_ancestors := db.get_ancestors ("DESCENDANT_A")
+			assert ("has_ancestor", l_ancestors.count >= 1)
+			l_descendants := db.get_descendants ("ANCESTOR_A")
+			assert ("has_descendant", l_descendants.count >= 1)
+		end
+
+	test_diamond_inheritance
+			-- Test diamond inheritance pattern
+		local
+			l_top, l_left, l_right, l_bottom: KB_CLASS_INFO
+			l_ancestors: ARRAYED_LIST [STRING_32]
+		do
+			create l_top.make ("test_lib", "DIAMOND_TOP")
+			db.add_class (l_top)
+			create l_left.make ("test_lib", "DIAMOND_LEFT")
+			l_left.add_parent ("DIAMOND_TOP")
+			db.add_class (l_left)
+			create l_right.make ("test_lib", "DIAMOND_RIGHT")
+			l_right.add_parent ("DIAMOND_TOP")
+			db.add_class (l_right)
+			create l_bottom.make ("test_lib", "DIAMOND_BOTTOM")
+			l_bottom.add_parent ("DIAMOND_LEFT")
+			l_bottom.add_parent ("DIAMOND_RIGHT")
+			db.add_class (l_bottom)
+			l_ancestors := db.get_ancestors ("DIAMOND_BOTTOM")
+			assert ("has_left", l_ancestors.has ("DIAMOND_LEFT"))
+			assert ("has_right", l_ancestors.has ("DIAMOND_RIGHT"))
+			assert ("has_top", l_ancestors.has ("DIAMOND_TOP"))
+		end
+
+feature -- Feature Metadata Tests
+
+	test_feature_deferred
+			-- Test deferred feature flag
+		local
+			l_class: KB_CLASS_INFO
+			l_feature: KB_FEATURE_INFO
+			l_found: detachable KB_FEATURE_INFO
+		do
+			create l_class.make ("test_lib", "CLASS_WITH_DEFERRED")
+			l_class.set_deferred (True)
+			db.add_class (l_class)
+			create l_feature.make (l_class.id, "deferred_method")
+			l_feature.set_deferred (True)
+			l_feature.set_kind ("query")
+			db.add_feature (l_feature)
+			l_found := db.find_feature ("CLASS_WITH_DEFERRED", "deferred_method")
+			assert ("feature_found", l_found /= Void)
+			if attached l_found as feat then
+				assert ("is_deferred", feat.is_deferred)
+			end
+		end
+
+	test_feature_once
+			-- Test once feature flag
+		local
+			l_class: KB_CLASS_INFO
+			l_feature: KB_FEATURE_INFO
+			l_found: detachable KB_FEATURE_INFO
+		do
+			create l_class.make ("test_lib", "CLASS_WITH_ONCE")
+			db.add_class (l_class)
+			create l_feature.make (l_class.id, "shared_instance")
+			l_feature.set_once (True)
+			l_feature.set_kind ("query")
+			db.add_feature (l_feature)
+			l_found := db.find_feature ("CLASS_WITH_ONCE", "shared_instance")
+			assert ("feature_found", l_found /= Void)
+			if attached l_found as feat then
+				assert ("is_once", feat.is_once)
+			end
+		end
+
+feature -- Edge Case Tests
+
+	test_class_no_parents
+			-- Test class with no parents (root class)
+		local
+			l_class: KB_CLASS_INFO
+			l_found: detachable KB_CLASS_INFO
+			l_ancestors: ARRAYED_LIST [STRING_32]
+		do
+			create l_class.make ("test_lib", "ROOT_CLASS")
+			db.add_class (l_class)
+			l_found := db.find_class ("ROOT_CLASS")
+			assert ("class_found", l_found /= Void)
+			if attached l_found as cls then
+				assert ("no_parents", cls.parents.is_empty)
+			end
+			l_ancestors := db.get_ancestors ("ROOT_CLASS")
+			assert ("no_ancestors", l_ancestors.is_empty)
+		end
+
+	test_unknown_class_ancestry
+			-- Test ancestry query for unknown class returns empty
+		local
+			l_ancestors, l_descendants: ARRAYED_LIST [STRING_32]
+		do
+			l_ancestors := db.get_ancestors ("NONEXISTENT_CLASS")
+			l_descendants := db.get_descendants ("NONEXISTENT_CLASS")
+			assert ("no_ancestors", l_ancestors.is_empty)
+			assert ("no_descendants", l_descendants.is_empty)
+		end
+
 feature {NONE} -- Assertion Helper
 
 	assert (a_tag: STRING; a_condition: BOOLEAN)

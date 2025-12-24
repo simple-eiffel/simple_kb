@@ -48,6 +48,9 @@ feature {NONE} -- Initialization
 			signature := a_row.string_value ("signature")
 			description := a_row.string_value ("description")
 			kind := a_row.string_value ("kind")
+			is_deferred := a_row.integer_value ("is_deferred") = 1
+			is_frozen := a_row.integer_value ("is_frozen") = 1
+			is_once := a_row.integer_value ("is_once") = 1
 			create preconditions.make (2)
 			create postconditions.make (2)
 
@@ -75,6 +78,15 @@ feature -- Access
 
 	kind: STRING_32
 			-- Kind: 'query', 'command', 'creation', 'attribute'
+
+	is_deferred: BOOLEAN
+			-- Is this a deferred (abstract) feature?
+
+	is_frozen: BOOLEAN
+			-- Is this a frozen (non-overridable) feature?
+
+	is_once: BOOLEAN
+			-- Is this a once (cached) feature?
 
 	preconditions: ARRAYED_LIST [TUPLE [tag, expression: STRING_32]]
 			-- Precondition contracts
@@ -121,6 +133,24 @@ feature -- Setters
 			-- Add postcondition
 		do
 			postconditions.extend ([a_tag.to_string_32, a_expr.to_string_32])
+		end
+
+	set_deferred (a_val: BOOLEAN)
+			-- Set deferred status
+		do
+			is_deferred := a_val
+		end
+
+	set_frozen (a_val: BOOLEAN)
+			-- Set frozen status
+		do
+			is_frozen := a_val
+		end
+
+	set_once (a_val: BOOLEAN)
+			-- Set once status
+		do
+			is_once := a_val
 		end
 
 feature -- Status
