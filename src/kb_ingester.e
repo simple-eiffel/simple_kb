@@ -18,6 +18,9 @@ note
 class
 	KB_INGESTER
 
+inherit
+	SHARED_EXECUTION_ENVIRONMENT
+
 create
 	make
 
@@ -35,6 +38,7 @@ feature {NONE} -- Initialization
 			features_indexed := 0
 			files_processed := 0
 			errors_count := 0
+			libraries_indexed := 0
 			create last_error.make_empty
 		ensure
 			db_set: db = a_db
@@ -57,8 +61,24 @@ feature -- Access
 	errors_count: INTEGER
 			-- Number of parse errors
 
+	libraries_indexed: INTEGER
+			-- Number of libraries indexed (ECF files)
+
 	last_error: STRING_32
 			-- Last error message
+
+	verbose: BOOLEAN
+			-- Report progress during ingestion?
+
+feature -- Settings
+
+	set_verbose (a_val: BOOLEAN)
+			-- Enable/disable progress reporting
+		do
+			verbose := a_val
+		ensure
+			verbose_set: verbose = a_val
+		end
 
 feature -- Ingestion
 
@@ -73,6 +93,9 @@ feature -- Ingestion
 		do
 			create l_dir.make (a_src_path.out)
 			if l_dir.exists then
+				if verbose then
+					io.put_string ("[LIBRARY] " + a_library.out + " (" + a_src_path.out + ")%N")
+				end
 				l_entries := scan_directory (l_dir.path)
 				across l_entries as entry loop
 					ingest_file (a_library, entry.out)
@@ -111,6 +134,11 @@ feature -- Ingestion
 						last_error := "No classes found in " + a_file_path.out
 					else
 						across l_ast.classes as cls loop
+							-- Report progress
+							if verbose then
+								io.put_string ("  [CLASS] " + cls.name.out + "%N")
+							end
+							
 							-- Create class info
 							create l_class.make (a_library.to_string_32, cls.name.to_string_32)
 							l_class.set_description (cls.header_comment.to_string_32)
@@ -171,6 +199,7 @@ feature -- Ingestion
 		local
 			l_dir: DIRECTORY
 			l_lib_name: STRING
+			l_lib_path: PATH
 			l_src_path: PATH
 		do
 			create l_dir.make (a_base_path.out)
@@ -178,7 +207,12 @@ feature -- Ingestion
 				across l_dir.entries as entry loop
 					l_lib_name := entry.name.out
 					if l_lib_name.starts_with ("simple_") then
-						-- Try src/ subdirectory
+						-- Index ECF file
+						create l_lib_path.make_from_string (a_base_path.out)
+						l_lib_path := l_lib_path.extended (l_lib_name)
+						ingest_ecf (l_lib_name, l_lib_path.out)
+						
+						-- Try src/ subdirectory for source files
 						create l_src_path.make_from_string (a_base_path.out)
 						l_src_path := l_src_path.extended (l_lib_name).extended ("src")
 						if (create {DIRECTORY}.make_with_path (l_src_path)).exists then
@@ -189,12 +223,112 @@ feature -- Ingestion
 			end
 		end
 
+	ingest_ecf (a_library: READABLE_STRING_GENERAL; a_lib_path: READABLE_STRING_GENERAL)
+			-- Parse ECF file and extract library metadata
+		require
+			library_not_empty: not a_library.is_empty
+			path_not_empty: not a_lib_path.is_empty
+		local
+			l_ecf_path: STRING
+			l_file: RAW_FILE
+			l_content: STRING
+			l_lib: KB_LIBRARY_INFO
+			l_rescued: BOOLEAN
+		do
+			if not l_rescued then
+				-- Find ECF file (library_name.ecf)
+				l_ecf_path := a_lib_path.out + "/" + a_library.out + ".ecf"
+				create l_file.make_with_name (l_ecf_path)
+				if l_file.exists then
+					if verbose then
+						io.put_string ("[ECF] " + l_ecf_path + "%N")
+					end
+					
+					-- Read ECF content
+					l_file.open_read
+					l_file.read_stream (l_file.count.max (1))
+					l_content := l_file.last_string.twin
+					l_file.close
+					
+					-- Parse and store library info
+					l_lib := parse_ecf_content (a_library.to_string_32, l_content, l_ecf_path)
+					db.add_library (l_lib)
+					libraries_indexed := libraries_indexed + 1
+				end
+			end
+		rescue
+			l_rescued := True
+			errors_count := errors_count + 1
+			last_error := "Exception parsing ECF for " + a_library.out
+			retry
+		end
+
+	parse_ecf_content (a_name: STRING_32; a_content: STRING; a_path: STRING): KB_LIBRARY_INFO
+			-- Parse ECF XML content into library info
+		local
+			l_xml: SIMPLE_XML
+			l_xml_doc: SIMPLE_XML_DOCUMENT
+			l_targets, l_clusters, l_libs: ARRAYED_LIST [SIMPLE_XML_ELEMENT]
+			l_tgt, l_el: SIMPLE_XML_ELEMENT
+			i, j: INTEGER
+		do
+			create Result.make (a_name)
+			Result.set_file_path (a_path.to_string_32)
+			
+			-- Parse XML
+			create l_xml.make
+			l_xml_doc := l_xml.parse (a_content)
+			
+			if attached l_xml_doc.root as root then
+				-- ECF root is <system>
+				-- UUID
+				if attached root.attr ("uuid") as uuid then
+					Result.set_uuid (uuid)
+				end
+				
+				-- Description
+				if attached root.element ("description") as desc_el then
+					if attached desc_el.text as txt then
+						Result.set_description (txt)
+					end
+				end
+				
+				-- Find targets for clusters and dependencies
+				l_targets := root.elements ("target")
+				from i := 1 until i > l_targets.count loop
+					l_tgt := l_targets [i]
+					
+					-- Clusters
+					l_clusters := l_tgt.elements ("cluster")
+					from j := 1 until j > l_clusters.count loop
+						l_el := l_clusters [j]
+						if attached l_el.attr ("name") as cl_name then
+							Result.add_cluster (cl_name)
+						end
+						j := j + 1
+					end
+					
+					-- Dependencies (library tags)
+					l_libs := l_tgt.elements ("library")
+					from j := 1 until j > l_libs.count loop
+						l_el := l_libs [j]
+						if attached l_el.attr ("name") as lib_name then
+							Result.add_dependency (lib_name)
+						end
+						j := j + 1
+					end
+					
+					i := i + 1
+				end
+			end
+		end
+
 feature -- Statistics
 
-	stats: TUPLE [files, classes, features, errors: INTEGER]
+	stats: TUPLE [files, classes, features, errors, libraries: INTEGER]
 			-- Ingestion statistics
 		do
-			Result := [files_processed, classes_indexed, features_indexed, errors_count]
+			Result := [files_processed, classes_indexed, features_indexed, errors_count, libraries_indexed]
 		end
 
 	reset_stats
@@ -204,12 +338,14 @@ feature -- Statistics
 			classes_indexed := 0
 			features_indexed := 0
 			errors_count := 0
+			libraries_indexed := 0
 			last_error.wipe_out
 		ensure
 			files_reset: files_processed = 0
 			classes_reset: classes_indexed = 0
 			features_reset: features_indexed = 0
 			errors_reset: errors_count = 0
+			libraries_reset: libraries_indexed = 0
 		end
 
 feature {NONE} -- Implementation

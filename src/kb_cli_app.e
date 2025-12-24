@@ -73,6 +73,8 @@ feature -- Commands
 				process_example_command (a_args)
 			elseif l_cmd.same_string ("feature") then
 				process_feature_command (a_args)
+			elseif l_cmd.same_string ("library") or l_cmd.same_string ("lib") then
+				process_library_command (a_args)
 			elseif l_cmd.same_string ("ingest") then
 				process_ingest_command (a_args)
 			elseif l_cmd.same_string ("rosetta") then
@@ -518,6 +520,116 @@ feature -- Feature Commands
 			io.put_string ("%N")
 		end
 
+feature -- Library Commands
+
+	process_library_command (a_args: ARGUMENTS_32)
+			-- Handle 'library' subcommand
+		local
+			l_name: STRING_32
+		do
+			if a_args.argument_count < 2 then
+				cmd_library_list
+			else
+				l_name := a_args.argument (2).as_lower
+				if l_name.same_string ("list") then
+					cmd_library_list
+				else
+					cmd_library (l_name)
+				end
+			end
+		end
+
+	cmd_library (a_name: STRING_32)
+			-- Show library details
+		local
+			l_lib: detachable KB_LIBRARY_INFO
+			l_matches: ARRAYED_LIST [KB_LIBRARY_INFO]
+			i: INTEGER
+			l_input: STRING
+			l_choice: INTEGER
+		do
+			l_lib := db.get_library (a_name)
+			if attached l_lib as lib then
+				io.put_string (lib.formatted.out)
+				io.put_string ("%N")
+			else
+				-- Try partial match
+				l_matches := db.search_libraries (a_name, 20)
+				if l_matches.is_empty then
+					io.put_string ("Library not found: " + a_name.out + "%N%N")
+					io.put_string ("Run 'kb ingest <path>' to index libraries first.%N")
+					io.put_string ("Or use 'kb library list' to see all libraries.%N")
+				else
+					io.put_string ("Libraries matching '" + a_name.out + "' (" + l_matches.count.out + "):%N")
+					io.put_string ("========================================%N%N")
+					from i := 1 until i > l_matches.count loop
+						io.put_string ("#" + i.out + " " + l_matches[i].name.out)
+						if not l_matches[i].description.is_empty then
+							io.put_string (" - " + truncate (l_matches[i].description, 50).out)
+						end
+						io.put_string ("%N")
+						i := i + 1
+					end
+					
+					io.put_string ("%NSelect (1-" + l_matches.count.out + ") or Enter to skip: ")
+					io.read_line
+					l_input := io.last_string.twin
+					l_input.left_adjust
+					l_input.right_adjust
+					
+					if not l_input.is_empty and then l_input.is_integer then
+						l_choice := l_input.to_integer
+						if l_choice >= 1 and l_choice <= l_matches.count then
+							io.put_string ("%N")
+							io.put_string (l_matches[l_choice].formatted.out)
+							io.put_string ("%N")
+						end
+					end
+				end
+			end
+		end
+
+	cmd_library_list
+			-- List all libraries with interactive selection
+		local
+			l_libs: ARRAYED_LIST [KB_LIBRARY_INFO]
+			i: INTEGER
+			l_input: STRING
+			l_choice: INTEGER
+		do
+			l_libs := db.all_libraries
+			if l_libs.is_empty then
+				io.put_string ("No libraries in database.%N")
+				io.put_string ("Run 'kb ingest <path>' to index libraries.%N")
+			else
+				io.put_string ("Libraries (" + l_libs.count.out + "):%N")
+				io.put_string ("========================%N%N")
+				from i := 1 until i > l_libs.count loop
+					io.put_string ("#" + i.out + " " + l_libs[i].name.out)
+					if not l_libs[i].description.is_empty then
+						io.put_string (" - " + truncate (l_libs[i].description, 50).out)
+					end
+					io.put_string ("%N")
+					i := i + 1
+				end
+				
+				io.put_string ("%NSelect (1-" + l_libs.count.out + ") or Enter to skip: ")
+				io.read_line
+				l_input := io.last_string.twin
+				l_input.left_adjust
+				l_input.right_adjust
+				
+				if not l_input.is_empty and then l_input.is_integer then
+					l_choice := l_input.to_integer
+					if l_choice >= 1 and l_choice <= l_libs.count then
+						io.put_string ("%N")
+						io.put_string (l_libs[l_choice].formatted.out)
+						io.put_string ("%N")
+					end
+				end
+			end
+		end
+
 feature -- Search Commands
 
 	cmd_search (a_query: STRING_32)
@@ -718,7 +830,7 @@ feature -- Other Commands
 			-- Index source files
 		local
 			l_ingester: KB_INGESTER
-			l_stats: TUPLE [files, classes, features, errors: INTEGER]
+			l_stats: TUPLE [files, classes, features, errors, libraries: INTEGER]
 			l_dir: DIRECTORY
 			l_lib_name: STRING_32
 			l_src_path: STRING
@@ -729,6 +841,7 @@ feature -- Other Commands
 			else
 				io.put_string ("Ingesting source files from: " + a_path.out + "%N")
 				create l_ingester.make (db)
+				l_ingester.set_verbose (True)
 
 				-- Check if it's the base path with simple_* libraries
 				if has_simple_libraries (a_path) then
@@ -736,6 +849,9 @@ feature -- Other Commands
 				else
 					-- Treat as single library - look for src subdirectory
 					l_lib_name := extract_library_name (a_path)
+					-- Index ECF file
+					l_ingester.ingest_ecf (l_lib_name, a_path.out)
+					-- Index source files
 					l_src_path := a_path.out + "/src"
 					create l_dir.make (l_src_path)
 					if l_dir.exists then
@@ -748,6 +864,7 @@ feature -- Other Commands
 
 				l_stats := l_ingester.stats
 				io.put_string ("%NDone. Indexed:%N")
+				io.put_string ("  - " + l_stats.libraries.out + " libraries%N")
 				io.put_string ("  - " + l_stats.files.out + " files%N")
 				io.put_string ("  - " + l_stats.classes.out + " classes%N")
 				io.put_string ("  - " + l_stats.features.out + " features%N")
@@ -781,15 +898,16 @@ feature -- Other Commands
 	cmd_stats
 			-- Show database statistics
 		local
-			l_stats: TUPLE [classes, features, examples, errors, patterns: INTEGER]
+			l_stats: TUPLE [classes, features, examples, errors, patterns, libraries: INTEGER]
 		do
 			l_stats := db.stats
 			io.put_string ("Knowledge Base Statistics%N")
 			io.put_string ("=========================%N%N")
-			io.put_string ("Error codes:  " + l_stats.errors.out + "%N")
+			io.put_string ("Libraries:    " + l_stats.libraries.out + "%N")
 			io.put_string ("Classes:      " + l_stats.classes.out + "%N")
 			io.put_string ("Features:     " + l_stats.features.out + "%N")
 			io.put_string ("Examples:     " + l_stats.examples.out + "%N")
+			io.put_string ("Error codes:  " + l_stats.errors.out + "%N")
 			io.put_string ("Patterns:     " + l_stats.patterns.out + "%N")
 		end
 
@@ -988,6 +1106,206 @@ NOTES:
     - Run 'kb ingest <path>' to index source files
     - Run 'kb rosetta <path>' to import Rosetta examples
     - Database is stored in kb.db
+
+]")
+		end
+
+feature -- Interactive Mode
+
+	run_interactive_mode
+			-- Run interactive REPL loop
+		local
+			l_input: STRING
+			l_done: BOOLEAN
+		do
+			io.put_string ("Eiffel Knowledge Base - Interactive Mode%N")
+			io.put_string ("========================================%N")
+			io.put_string ("Type 'help' for commands, 'quit' to exit%N%N")
+			
+			from l_done := False until l_done loop
+				io.put_string ("kb> ")
+				io.read_line
+				l_input := io.last_string.twin
+				l_input.left_adjust
+				l_input.right_adjust
+				
+				if l_input.is_empty then
+					-- Skip empty input
+				elseif is_quit_command (l_input) then
+					l_done := True
+					io.put_string ("Goodbye!%N")
+				else
+					dispatch_interactive_command (l_input)
+				end
+			end
+		end
+
+	dispatch_interactive_command (a_input: STRING)
+			-- Parse and dispatch interactive command
+		local
+			l_parts: LIST [STRING]
+			l_cmd, l_arg: STRING_32
+		do
+			l_parts := a_input.split (' ')
+			if l_parts.is_empty then
+				-- Nothing to do
+			else
+				l_cmd := l_parts.first.as_lower.to_string_32
+				
+				-- Get rest of input as argument (everything after first space)
+				if a_input.has (' ') then
+					l_arg := a_input.substring (a_input.index_of (' ', 1) + 1, a_input.count).to_string_32
+					l_arg.left_adjust
+				else
+					create l_arg.make_empty
+				end
+				
+				-- Command dispatch with shortcuts
+				if l_cmd.same_string ("s") or l_cmd.same_string ("search") then
+					if l_arg.is_empty then
+						io.put_string ("Usage: search <query>%N")
+					else
+						cmd_search (l_arg)
+					end
+				elseif l_cmd.same_string ("c") or l_cmd.same_string ("class") then
+					if l_arg.is_empty then
+						io.put_string ("Usage: class <name>%N")
+					else
+						cmd_class (l_arg.as_upper)
+					end
+				elseif l_cmd.same_string ("f") or l_cmd.same_string ("feature") then
+					if l_arg.is_empty then
+						io.put_string ("Usage: feature CLASS.name%N")
+					else
+						process_feature_arg (l_arg)
+					end
+				elseif l_cmd.same_string ("e") or l_cmd.same_string ("error") then
+					if l_arg.is_empty or l_arg.same_string ("list") then
+						cmd_error_list
+					else
+						cmd_error_lookup (l_arg.as_upper)
+					end
+				elseif l_cmd.same_string ("p") or l_cmd.same_string ("pattern") then
+					if l_arg.is_empty or l_arg.same_string ("list") then
+						cmd_pattern_list
+					else
+						cmd_pattern_lookup (l_arg)
+					end
+				elseif l_cmd.same_string ("ex") or l_cmd.same_string ("example") then
+					if l_arg.is_empty then
+						io.put_string ("Usage: example <title>%N")
+					else
+						cmd_example (l_arg)
+					end
+				elseif l_cmd.same_string ("l") or l_cmd.same_string ("lib") or l_cmd.same_string ("library") then
+					if l_arg.is_empty or l_arg.same_string ("list") then
+						cmd_library_list
+					else
+						cmd_library (l_arg)
+					end
+				elseif l_cmd.same_string ("stats") then
+					cmd_stats
+				elseif l_cmd.same_string ("seed") then
+					cmd_seed
+				elseif l_cmd.same_string ("ingest") then
+					if l_arg.is_empty then
+						io.put_string ("Usage: ingest <path>%N")
+					else
+						cmd_ingest (l_arg)
+					end
+				elseif l_cmd.same_string ("rosetta") then
+					if l_arg.is_empty then
+						io.put_string ("Usage: rosetta <path>%N")
+					else
+						cmd_rosetta (l_arg)
+					end
+				elseif l_cmd.same_string ("clear") then
+					if l_arg.is_empty then
+						show_clear_help
+					elseif l_arg.same_string ("all") then
+						cmd_clear_all
+					elseif l_arg.same_string ("classes") then
+						cmd_clear_classes
+					elseif l_arg.same_string ("examples") then
+						cmd_clear_examples
+					elseif l_arg.same_string ("errors") then
+						cmd_clear_errors
+					elseif l_arg.same_string ("patterns") then
+						cmd_clear_patterns
+					else
+						show_clear_help
+					end
+				elseif l_cmd.same_string ("help") or l_cmd.same_string ("h") or l_cmd.same_string ("?") then
+					show_interactive_help
+				else
+					io.put_string ("Unknown command: " + l_cmd.out + ". Type 'help' for commands.%N")
+				end
+			end
+		end
+
+	process_feature_arg (a_arg: STRING_32)
+			-- Parse feature argument (CLASS.feature or CLASS feature)
+		local
+			l_dot_pos: INTEGER
+			l_class_name, l_feature_name: STRING_32
+		do
+			l_dot_pos := a_arg.index_of ('.', 1)
+			if l_dot_pos > 0 then
+				l_class_name := a_arg.head (l_dot_pos - 1).as_upper
+				l_feature_name := a_arg.tail (a_arg.count - l_dot_pos)
+				cmd_feature (l_class_name, l_feature_name)
+			elseif a_arg.has (' ') then
+				l_class_name := a_arg.split (' ').first.as_upper.to_string_32
+				l_feature_name := a_arg.substring (a_arg.index_of (' ', 1) + 1, a_arg.count).to_string_32
+				cmd_feature (l_class_name, l_feature_name)
+			else
+				-- Just class name - show features
+				cmd_class_features (a_arg.as_upper)
+			end
+		end
+
+	is_quit_command (a_input: STRING): BOOLEAN
+			-- Is this a quit command?
+		local
+			l_lower: STRING
+		do
+			l_lower := a_input.as_lower
+			Result := l_lower.same_string ("quit") or l_lower.same_string ("exit")
+				or l_lower.same_string ("bye") or l_lower.same_string ("q")
+		end
+
+	show_interactive_help
+			-- Show interactive mode help with shortcuts
+		do
+			io.put_string ("[
+Interactive Mode Commands
+=========================
+
+SHORTCUTS:
+    s <query>      Search (alias: search)
+    c <name>       Class details (alias: class)
+    f <class.name> Feature details (alias: feature)
+    l <name>       Library details (alias: lib, library)
+    e <code>       Error lookup (alias: error)
+    p <name>       Pattern lookup (alias: pattern)
+    ex <title>     Example code (alias: example)
+    h or ?         This help (alias: help)
+    q              Quit (alias: quit, exit, bye)
+
+ADMIN:
+    stats          Show database statistics
+    seed           Populate error codes + patterns
+    ingest <path>  Index source files
+    rosetta <path> Import Rosetta examples
+    clear <target> Clear data
+
+EXAMPLES:
+    s json         # Search for 'json'
+    c SIMPLE_HTTP  # Show class
+    f SIMPLE_HTTP.get  # Show feature
+    l simple_json  # Show library
+    e VEVI         # Look up error
+    p singleton    # Show pattern
 
 ]")
 		end

@@ -136,6 +136,7 @@ feature -- Schema
 			create_classes_table
 			create_features_table
 			create_class_parents_table
+			create_libraries_table
 			create_examples_table
 			create_errors_table
 			create_patterns_table
@@ -258,6 +259,23 @@ feature {NONE} -- Schema Creation
 					parent_name TEXT NOT NULL,
 					conforming INTEGER DEFAULT 1,
 					UNIQUE(class_id, parent_name)
+				)
+			]")
+		end
+
+	create_libraries_table
+			-- Create libraries table for ECF metadata
+		do
+			db.execute ("[
+				CREATE TABLE IF NOT EXISTS libraries (
+					id INTEGER PRIMARY KEY,
+					name TEXT UNIQUE NOT NULL,
+					description TEXT,
+					uuid TEXT,
+					file_path TEXT,
+					clusters TEXT,
+					dependencies TEXT,
+					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				)
 			]")
 		end
@@ -704,21 +722,104 @@ feature -- Pattern Operations
 			end
 		end
 
+feature -- Library Operations
+
+	get_library (a_name: READABLE_STRING_GENERAL): detachable KB_LIBRARY_INFO
+			-- Get library by name
+		require
+			is_open: is_open
+		local
+			l_result: SIMPLE_SQL_RESULT
+		do
+			l_result := db.query_with_args (
+				"SELECT * FROM libraries WHERE name = ? COLLATE NOCASE LIMIT 1",
+				<<a_name.to_string_32>>
+			)
+			if not l_result.is_empty then
+				create Result.make_from_row (l_result.rows.first)
+			end
+		end
+
+	add_library (a_library: KB_LIBRARY_INFO)
+			-- Add or update library
+		require
+			is_open: is_open
+		do
+			db.execute_with_args ("[
+				INSERT OR REPLACE INTO libraries
+				(name, description, uuid, file_path, clusters, dependencies)
+				VALUES (?, ?, ?, ?, ?, ?)
+			]", <<
+				a_library.name,
+				a_library.description,
+				a_library.uuid,
+				a_library.file_path,
+				a_library.clusters_json,
+				a_library.dependencies_json
+			>>)
+
+			a_library.set_id (db.last_insert_rowid.to_integer_32)
+		end
+
+	all_libraries: ARRAYED_LIST [KB_LIBRARY_INFO]
+			-- Get all libraries
+		require
+			is_open: is_open
+		local
+			l_result: SIMPLE_SQL_RESULT
+			l_lib: KB_LIBRARY_INFO
+		do
+			create Result.make (50)
+			l_result := db.query ("SELECT * FROM libraries ORDER BY name")
+			across l_result.rows as row loop
+				create l_lib.make_from_row (row)
+				Result.extend (l_lib)
+			end
+		end
+
+	search_libraries (a_query: READABLE_STRING_GENERAL; a_limit: INTEGER): ARRAYED_LIST [KB_LIBRARY_INFO]
+			-- Search libraries by name
+		require
+			is_open: is_open
+		local
+			l_result: SIMPLE_SQL_RESULT
+			l_lib: KB_LIBRARY_INFO
+		do
+			create Result.make (a_limit)
+			l_result := db.query_with_args (
+				"SELECT * FROM libraries WHERE name LIKE ? ORDER BY name LIMIT ?",
+				<<"%%" + a_query.to_string_32 + "%%", a_limit>>
+			)
+			across l_result.rows as row loop
+				create l_lib.make_from_row (row)
+				Result.extend (l_lib)
+			end
+		end
+
+	library_count: INTEGER
+			-- Total number of libraries
+		require
+			is_open: is_open
+		do
+			Result := safe_count ("SELECT COUNT(*) FROM libraries")
+		end
+
 feature -- Statistics
 
-	stats: TUPLE [classes, features, examples, errors, patterns: INTEGER]
+	stats: TUPLE [classes, features, examples, errors, patterns, libraries: INTEGER]
 			-- Database statistics
 		require
 			is_open: is_open
 		local
-			l_classes, l_features, l_examples, l_errors, l_patterns: INTEGER
+			l_classes, l_features, l_examples, l_errors, l_patterns, l_libraries: INTEGER
 		do
 			l_classes := safe_count ("SELECT COUNT(*) FROM classes")
 			l_features := safe_count ("SELECT COUNT(*) FROM features")
 			l_examples := safe_count ("SELECT COUNT(*) FROM examples")
 			l_errors := safe_count ("SELECT COUNT(*) FROM errors")
 			l_patterns := safe_count ("SELECT COUNT(*) FROM patterns")
-			Result := [l_classes, l_features, l_examples, l_errors, l_patterns]
+			l_libraries := safe_count ("SELECT COUNT(*) FROM libraries")
+			Result := [l_classes, l_features, l_examples, l_errors, l_patterns, l_libraries]
 		end
 
 	safe_count (a_sql: STRING): INTEGER
