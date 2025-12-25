@@ -1,4 +1,5 @@
 EIFGENs/
 *.db
+!bin/kb.db
 *.log
 data/
