@@ -125,7 +125,41 @@ kb ai "How do I handle void safety in Eiffel?"
 | `kb ingest <path>` | Index source files |
 | `kb rosetta <path>` | Import Rosetta Code examples |
 | `kb seed` | Populate error codes + patterns |
+| `kb clear` | Clear all database content |
 | `kb stats` | Show database statistics |
+
+## Rebuilding the Database
+
+A pre-built `bin/kb.db` is included with 4,613 classes and 87,780 features indexed. To rebuild from scratch:
+
+```bash
+# 1. Clear existing database
+kb clear
+
+# 2. Seed with error codes, patterns, and FAQ entries
+kb seed
+
+# 3. Ingest your Eiffel source libraries
+kb ingest /d/prod                    # Index all simple_* libraries
+kb ingest "$ISE_LIBRARY/library"     # Index EiffelStudio stdlib
+
+# 4. Import Rosetta Code examples (optional)
+kb rosetta /d/prod/simple_rosetta
+
+# 5. Verify
+kb stats
+```
+
+### Ingestion Details
+
+The `ingest` command recursively parses all `.e` files:
+
+- Extracts class names, inheritance, feature signatures
+- Indexes feature comments and contracts (require/ensure)
+- Stores source file paths for navigation
+- Uses SCOOP-capable parser (GitHub Gobo 2024)
+
+Large codebases may take several minutes to index.
 
 ## Library API
 

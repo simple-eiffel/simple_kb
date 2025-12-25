@@ -88,9 +88,40 @@ kb ai "What is the difference between once and create?"</pre>
                     <tr><td><code>kb ingest path</code></td><td>Index source files</td></tr>
                     <tr><td><code>kb rosetta path</code></td><td>Import Rosetta examples</td></tr>
                     <tr><td><code>kb seed</code></td><td>Populate errors + patterns</td></tr>
+                    <tr><td><code>kb clear</code></td><td>Clear all database content</td></tr>
                     <tr><td><code>kb stats</code></td><td>Database statistics</td></tr>
                 </tbody>
             </table>
+        </section>
+
+        <section id="rebuild">
+            <h2>Rebuilding the Database</h2>
+            <p>A pre-built <code>bin/kb.db</code> is included with 4,613 classes and 87,780 features. To rebuild from scratch:</p>
+            <div class="code-block">
+                <pre># 1. Clear existing database
+kb clear
+
+# 2. Seed with error codes, patterns, and FAQ entries
+kb seed
+
+# 3. Ingest your Eiffel source libraries
+kb ingest /d/prod                    # Index all simple_* libraries
+kb ingest "$ISE_LIBRARY/library"     # Index EiffelStudio stdlib
+
+# 4. Import Rosetta Code examples (optional)
+kb rosetta /d/prod/simple_rosetta
+
+# 5. Verify
+kb stats</pre>
+            </div>
+            <h3>Ingestion Details</h3>
+            <ul>
+                <li>Extracts class names, inheritance, feature signatures</li>
+                <li>Indexes feature comments and contracts (require/ensure)</li>
+                <li>Stores source file paths for navigation</li>
+                <li>Uses SCOOP-capable parser (GitHub Gobo 2024)</li>
+            </ul>
+            <p>Large codebases may take several minutes to index.</p>
         </section>
 
         <section id="errors">
