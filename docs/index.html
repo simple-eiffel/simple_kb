@@ -3,321 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>simple_kb - Eiffel Knowledge Base</title>
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --bg: #f8fafc;
-            --card-bg: #ffffff;
-            --text: #1e293b;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --code-bg: #f1f5f9;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-        }
-        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
-        header {
-            text-align: center;
-            padding: 3rem 0;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 2rem;
-        }
-        h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-        .tagline { color: var(--text-muted); font-size: 1.2rem; }
-        .stats {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-top: 1.5rem;
-            flex-wrap: wrap;
-        }
-        .stat {
-            text-align: center;
-        }
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--primary);
-        }
-        .stat-label { color: var(--text-muted); font-size: 0.9rem; }
-        section {
-            background: var(--card-bg);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid var(--border);
-        }
-        h2 {
-            color: var(--primary);
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--border);
-        }
-        h3 { margin: 1rem 0 0.5rem; }
-        pre {
-            background: var(--code-bg);
-            padding: 1rem;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.9rem;
-            margin: 0.5rem 0;
-        }
-        code {
-            background: var(--code-bg);
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            font-family: 'Consolas', 'Monaco', monospace;
-        }
-        ul { margin-left: 1.5rem; }
-        li { margin: 0.3rem 0; }
-        .command { color: var(--primary-dark); }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1rem 0;
-        }
-        th, td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-        th { background: var(--code-bg); }
-        .pattern-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        .pattern-card {
-            background: var(--code-bg);
-            padding: 1rem;
-            border-radius: 6px;
-        }
-        .pattern-name {
-            font-weight: bold;
-            color: var(--primary);
-        }
-        footer {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-muted);
-            border-top: 1px solid var(--border);
-        }
-        a { color: var(--primary); }
-    </style>
+    <title>simple_kb - Eiffel Knowledge Base with AI-Enhanced RAG</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>simple_kb</h1>
-            <p class="tagline">Eiffel Knowledge Base - Errors, Patterns, Classes, Examples</p>
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-value">602</div>
-                    <div class="stat-label">Classes</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">12,742</div>
-                    <div class="stat-label">Features</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">31</div>
-                    <div class="stat-label">Error Codes</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">14</div>
-                    <div class="stat-label">Patterns</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">273</div>
-                    <div class="stat-label">Examples</div>
-                </div>
-            </div>
-        </header>
-
-        <section>
-            <h2>Quick Start</h2>
-            <h3>Installation</h3>
-            <pre>git clone https://github.com/simple-eiffel/simple_kb.git
-cd simple_kb
-ec -config simple_kb.ecf -target kb_cli -c_compile</pre>
-
-            <h3>Initialize Database</h3>
-            <pre><span class="command">kb seed</span>                    # Add error codes + patterns
-<span class="command">kb ingest /d/prod</span>          # Index source files
-<span class="command">kb rosetta /d/prod/simple_rosetta</span>  # Import examples</pre>
+    <header>
+        <div class="logo-container">
+            <img src="https://raw.githubusercontent.com/simple-eiffel/claude_eiffel_op_docs/main/artwork/LOGO.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_kb</h1>
+        <p class="tagline">Eiffel Knowledge Base with AI-Enhanced RAG</p>
+        <div class="badges">
+            <span class="badge badge-version">v1.0.0</span>
+            <span class="badge badge-license">MIT</span>
+        </div>
+    </header>
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#rag">RAG</a></li>
+            <li><a href="#stats">Statistics</a></li>
+            <li><a href="#cli">CLI</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_kb">GitHub</a></li>
+        </ul>
+    </nav>
+    <main>
+        <section id="overview">
+            <h2>Overview</h2>
+            <p><strong>simple_kb</strong> is a comprehensive Eiffel knowledge base featuring FTS5 full-text search, AI-enhanced RAG (Retrieval-Augmented Generation), compiler error documentation, design patterns, and source code indexing.</p>
+            <p>Part of the <a href="https://github.com/simple-eiffel">Simple Eiffel</a> ecosystem.</p>
         </section>
 
-        <section>
+        <section id="rag">
+            <h2>What is RAG?</h2>
+            <p><strong>RAG (Retrieval-Augmented Generation)</strong> combines traditional search with AI language models:</p>
+            <ul>
+                <li><strong>Retrieval</strong>: Find relevant documents from a knowledge base</li>
+                <li><strong>Augmentation</strong>: Provide retrieved context to an AI model</li>
+                <li><strong>Generation</strong>: AI synthesizes an answer using the context</li>
+            </ul>
+            <p>Unlike pure LLMs that may hallucinate, RAG grounds answers in actual knowledge base content.</p>
+
+            <h3>4-Phase RAG Cascade</h3>
+            <table class="api-table">
+                <thead><tr><th>Phase</th><th>Method</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td>1</td><td>FAQ Match</td><td>Curated Q&amp;A database with confidence scores (sub-ms response)</td></tr>
+                    <tr><td>2</td><td>FTS5 Search</td><td>Full-text search using SQLite FTS5 with BM25 ranking</td></tr>
+                    <tr><td>3</td><td>Query Expansion</td><td>Semantic synonyms expand search (void-&gt;attached)</td></tr>
+                    <tr><td>4</td><td>LLM Synthesis</td><td>Ollama provides contextual answers for complex queries</td></tr>
+                </tbody>
+            </table>
+
+            <div class="code-block">
+                <pre># AI-enhanced RAG query
+kb ai "How do I handle void safety in Eiffel?"
+kb ai "Explain SCOOP inline separate syntax"
+kb ai "What is the difference between once and create?"</pre>
+            </div>
+        </section>
+
+        <section id="stats">
+            <h2>Database Statistics</h2>
+            <div class="feature-grid">
+                <div class="feature-card"><h4>182</h4><p>Libraries indexed</p></div>
+                <div class="feature-card"><h4>4,613</h4><p>Classes</p></div>
+                <div class="feature-card"><h4>87,780</h4><p>Features</p></div>
+                <div class="feature-card"><h4>31</h4><p>Error codes</p></div>
+                <div class="feature-card"><h4>14</h4><p>Design patterns</p></div>
+                <div class="feature-card"><h4>273</h4><p>Rosetta examples</p></div>
+            </div>
+        </section>
+
+        <section id="cli">
             <h2>CLI Commands</h2>
-            <table>
-                <tr><th>Command</th><th>Description</th></tr>
-                <tr><td><code>kb search &lt;query&gt;</code></td><td>Full-text search across all content</td></tr>
-                <tr><td><code>kb class &lt;name&gt;</code></td><td>Show class details and features</td></tr>
-                <tr><td><code>kb error &lt;code&gt;</code></td><td>Look up compiler error code</td></tr>
-                <tr><td><code>kb pattern &lt;name&gt;</code></td><td>Show Eiffel design pattern</td></tr>
-                <tr><td><code>kb pattern list</code></td><td>List all patterns</td></tr>
-                <tr><td><code>kb ingest &lt;path&gt;</code></td><td>Index source files</td></tr>
-                <tr><td><code>kb rosetta &lt;path&gt;</code></td><td>Import Rosetta examples</td></tr>
-                <tr><td><code>kb seed</code></td><td>Populate error codes + patterns</td></tr>
-                <tr><td><code>kb stats</code></td><td>Show database statistics</td></tr>
+            <table class="api-table">
+                <thead><tr><th>Command</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>kb search query</code></td><td>Full-text search</td></tr>
+                    <tr><td><code>kb class NAME</code></td><td>Show class details</td></tr>
+                    <tr><td><code>kb error CODE</code></td><td>Compiler error lookup</td></tr>
+                    <tr><td><code>kb pattern NAME</code></td><td>Design pattern</td></tr>
+                    <tr><td><code>kb ai question</code></td><td>AI-enhanced RAG query</td></tr>
+                    <tr><td><code>kb ingest path</code></td><td>Index source files</td></tr>
+                    <tr><td><code>kb rosetta path</code></td><td>Import Rosetta examples</td></tr>
+                    <tr><td><code>kb seed</code></td><td>Populate errors + patterns</td></tr>
+                    <tr><td><code>kb stats</code></td><td>Database statistics</td></tr>
+                </tbody>
             </table>
         </section>
 
-        <section>
-            <h2>Error Codes</h2>
-            <p>31 compiler error codes with detailed explanations:</p>
-            <ul>
-                <li><strong>VEVI</strong> - Variable not properly set (void safety)</li>
-                <li><strong>VJAR</strong> - Type mismatch in assignment</li>
-                <li><strong>VUAR</strong> - Wrong number of actual arguments</li>
-                <li><strong>VUEX</strong> - Feature not exported</li>
-                <li><strong>VEEN</strong> - Feature name not known</li>
-                <li><strong>VD89</strong> - Dependency cycle (ECF libraries)</li>
-                <li>... and 25 more</li>
-            </ul>
-            <h3>Example</h3>
-            <pre>$ kb error VEVI
-
-ERROR: VEVI - Variable not properly set
-==================================================
-
-MEANING:
-  An attached local variable or Result must be assigned
-  on all possible execution paths before being used.
-
-COMMON CAUSES:
-  1. Result not assigned in an else branch
-  2. Local variable used before assignment
-
-FIX OPTIONS:
-  Option 1: Add else branch
-    if condition then Result := x else Result := y end</pre>
-        </section>
-
-        <section>
-            <h2>Design Patterns</h2>
-            <p>14 Eiffel-specific design pattern implementations:</p>
-            <div class="pattern-grid">
-                <div class="pattern-card">
-                    <div class="pattern-name">singleton</div>
-                    <div>Once functions for global access</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">factory</div>
-                    <div>Object creation abstraction</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">builder</div>
-                    <div>Fluent construction with like Current</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">observer</div>
-                    <div>Event handling with agents</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">iterator</div>
-                    <div>across construct patterns</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">null_object</div>
-                    <div>Void-safe default objects</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">command</div>
-                    <div>Undo/redo operations</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">visitor</div>
-                    <div>AST traversal patterns</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">template_method</div>
-                    <div>Algorithm skeletons</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">agent_callback</div>
-                    <div>Functional programming</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">dbc_validation</div>
-                    <div>Contract-based validation</div>
-                </div>
-                <div class="pattern-card">
-                    <div class="pattern-name">attachment_check</div>
-                    <div>Void-safe type narrowing</div>
-                </div>
+        <section id="errors">
+            <h2>Compiler Error Codes</h2>
+            <div class="feature-grid">
+                <div class="feature-card"><h4>VEVI</h4><p>Variable not properly set</p></div>
+                <div class="feature-card"><h4>VJAR</h4><p>Type mismatch</p></div>
+                <div class="feature-card"><h4>VUAR</h4><p>Wrong argument count</p></div>
+                <div class="feature-card"><h4>VUEX</h4><p>Feature not exported</p></div>
+                <div class="feature-card"><h4>VEEN</h4><p>Feature unknown</p></div>
+                <div class="feature-card"><h4>VD89</h4><p>Dependency cycle</p></div>
             </div>
         </section>
 
-        <section>
-            <h2>Library API</h2>
-            <h3>KB_QUICK Facade</h3>
-            <pre>class MY_APP
-
-feature -- Knowledge Base
-
-    kb: KB_QUICK
-        once
-            create Result.make_with_path ("kb.db")
-        end
-
-    lookup_error (a_code: STRING): detachable KB_ERROR_INFO
-        do
-            Result := kb.lookup_error (a_code)
-        end
-
-    search (a_query: STRING): ARRAYED_LIST [KB_RESULT]
-        do
-            Result := kb.search (a_query)
-        end
-
-    get_pattern (a_name: STRING): detachable KB_PATTERN
-        do
-            Result := kb.get_pattern (a_name)
-        end
-
-end</pre>
+        <section id="installation">
+            <h2>Installation</h2>
+            <div class="code-block">
+                <pre>export SIMPLE_KB=/path/to/simple_kb</pre>
+            </div>
+            <div class="code-block">
+                <pre>&lt;library name="simple_kb" location="$SIMPLE_KB/simple_kb.ecf"/&gt;</pre>
+            </div>
         </section>
-
-        <section>
-            <h2>ECF Configuration</h2>
-            <pre>&lt;library name="simple_kb"
-    location="$SIMPLE_EIFFEL/simple_kb/simple_kb.ecf"
-    readonly="true"/&gt;</pre>
-            <h3>Dependencies</h3>
-            <ul>
-                <li><code>simple_sql</code> - SQLite database wrapper</li>
-                <li><code>simple_json</code> - JSON parsing for idioms</li>
-                <li><code>simple_eiffel_parser</code> - Source code parsing</li>
-            </ul>
-        </section>
-
-        <section>
-            <h2>Database Schema</h2>
-            <table>
-                <tr><th>Table</th><th>Purpose</th></tr>
-                <tr><td><code>errors</code></td><td>Compiler error codes with causes, fixes, examples</td></tr>
-                <tr><td><code>classes</code></td><td>Indexed class information</td></tr>
-                <tr><td><code>features</code></td><td>Feature signatures and contracts</td></tr>
-                <tr><td><code>examples</code></td><td>Rosetta Code solutions</td></tr>
-                <tr><td><code>patterns</code></td><td>Design patterns with Eiffel idioms</td></tr>
-                <tr><td><code>kb_fts</code></td><td>FTS5 full-text search index</td></tr>
-            </table>
-        </section>
-
-        <footer>
-            <p>Part of the <a href="https://github.com/simple-eiffel">Simple Eiffel</a> ecosystem</p>
-            <p>23 tests passing | MIT License</p>
-        </footer>
-    </div>
+    </main>
+    <footer>
+        <p>2025 simple_* ecosystem. MIT License.</p>
+        <p><a href="https://github.com/simple-eiffel/simple_kb">GitHub</a> | <a href="https://simple-eiffel.github.io">Documentation</a></p>
+    </footer>
 </body>
 </html>
