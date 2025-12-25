@@ -527,6 +527,160 @@ feature -- Feature Metadata Tests
 			end
 		end
 
+feature -- Ingester Regression Tests (Parser Issues)
+
+	test_ingester_feature_count_not_one
+			-- REGRESSION: Ensure we extract more than 1 feature per class.
+			-- Bug: Parser was only extracting ~1 feature/class instead of ~20.
+		local
+			l_ingester: KB_INGESTER
+			l_class: detachable KB_CLASS_INFO
+		do
+			create l_ingester.make (db)
+			-- Parse KB_RESULT which should have multiple features
+			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_result.e")
+			assert ("file_processed", l_ingester.files_processed = 1)
+
+			l_class := db.find_class ("KB_RESULT")
+			assert ("class_found", l_class /= Void)
+
+			if attached l_class as cls then
+				-- KB_RESULT has at minimum: make, id, title, kind, snippet, score, relevance
+				-- Should have at least 5 features, not just 1
+				assert ("more_than_one_feature", cls.features.count > 1)
+				assert ("reasonable_feature_count", cls.features.count >= 5)
+			end
+		end
+
+	test_ingester_average_features_per_class
+			-- REGRESSION: Average features per class should be ~10-20, not ~1.
+		local
+			l_ingester: KB_INGESTER
+			l_avg: REAL_64
+		do
+			create l_ingester.make (db)
+			-- Parse multiple files from simple_kb
+			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_result.e")
+			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_class_info.e")
+			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_pattern.e")
+
+			if l_ingester.classes_indexed > 0 then
+				l_avg := l_ingester.features_indexed / l_ingester.classes_indexed
+			end
+
+			-- Average should be at least 5 features per class
+			assert ("reasonable_average", l_avg >= 5.0)
+		end
+
+	test_stdlib_parsing_not_all_errors
+			-- REGRESSION: Parser shouldn't fail on 100% of files.
+			-- Some files have C3 character constants that crash parser,
+			-- but not ALL files should fail.
+		local
+			l_ingester: KB_INGESTER
+			l_error_rate: REAL_64
+		do
+			create l_ingester.make (db)
+			io.put_string ("%N    [BEFORE] files=" + l_ingester.files_processed.out +
+			               " errors=" + l_ingester.errors_count.out + "%N")
+			l_ingester.set_verbose (True) -- Enable tracing
+			-- Parse simple_kb's own source - should have near 0% errors
+			l_ingester.ingest_library ("simple_kb", "D:/prod/simple_kb/src")
+
+			io.put_string ("%N    [AFTER] files=" + l_ingester.files_processed.out +
+			               " errors=" + l_ingester.errors_count.out +
+			               " classes=" + l_ingester.classes_indexed.out +
+			               " features=" + l_ingester.features_indexed.out + "%N")
+
+			if l_ingester.files_processed > 0 then
+				l_error_rate := l_ingester.errors_count / l_ingester.files_processed
+			end
+			io.put_string ("    [DEBUG] error_rate=" + l_error_rate.out + "%N")
+
+			-- Error rate should be < 50% for well-formed source
+			assert ("reasonable_error_rate", l_error_rate < 0.5)
+		end
+
+	test_parser_exception_handling
+			-- Test that parser exceptions don't crash ingester
+		local
+			l_ingester: KB_INGESTER
+		do
+			create l_ingester.make (db)
+			-- Try to parse a nonexistent file - should increment error count
+			l_ingester.ingest_file ("test", "D:/nonexistent/file.e")
+			assert ("error_counted", l_ingester.errors_count >= 1)
+			-- Ingester should still be functional
+			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_result.e")
+			assert ("still_works", l_ingester.files_processed >= 1)
+		end
+
+	test_minimal_class_parsing
+			-- Test parsing of minimal class with no features (caused crash in sed_meta_model.e)
+		local
+			l_ingester: KB_INGESTER
+			l_parser: SIMPLE_EIFFEL_PARSER
+			l_ast: EIFFEL_AST
+			l_source: STRING
+		do
+			-- This structure caused a crash in the Gobo parser:
+			-- note ... class NAME note ... end (no features, no inherit)
+			l_source := "[
+note
+	description: "Test minimal class"
+class
+	MINIMAL_TEST_CLASS
+note
+	copyright: "Test"
+end
+			]"
+
+			create l_parser.make
+			l_ast := l_parser.parse_string (l_source)
+
+			-- Should either parse successfully or fail gracefully, NOT crash
+			if l_ast.classes.is_empty then
+				-- Parser failed to extract class - that's acceptable
+				assert ("failed_gracefully", l_ast.has_errors or l_ast.classes.is_empty)
+			else
+				-- Parser succeeded
+				assert ("got_class", l_ast.classes.count = 1)
+				assert ("correct_name", l_ast.classes.first.name.same_string ("MINIMAL_TEST_CLASS"))
+			end
+		end
+
+	test_sed_meta_model_file
+			-- Test parsing the actual file that caused crashes
+		local
+			l_ingester: KB_INGESTER
+			l_classes_before: INTEGER
+		do
+			create l_ingester.make (db)
+			l_ingester.set_verbose (False)
+			l_classes_before := l_ingester.classes_indexed
+
+			-- This specific file caused segfaults
+			l_ingester.ingest_file ("base", "C:/Program Files/Eiffel Software/EiffelStudio 25.02 Standard/library/base/ise/serialization/model/sed_meta_model.e")
+
+			-- Should complete without crashing (either success or graceful failure)
+			assert ("completed", l_ingester.files_processed >= 1)
+		end
+
+	test_long_lines_file
+			-- Test parsing file with extremely long lines (test_memory.e crash)
+		local
+			l_ingester: KB_INGESTER
+		do
+			create l_ingester.make (db)
+			l_ingester.set_verbose (False)
+
+			-- This file has 11K+ character lines that caused parser hangs
+			l_ingester.ingest_file ("store", "C:/Program Files/Eiffel Software/EiffelStudio 25.02 Standard/library/store/test/src/autotests/test_memory.e")
+
+			-- Should complete without hanging (uses fallback parser)
+			assert ("completed", l_ingester.files_processed >= 1)
+		end
+
 feature -- Edge Case Tests
 
 	test_class_no_parents

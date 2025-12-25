@@ -81,9 +81,25 @@ feature -- Access
 			-- Underlying database connection
 
 	default_db_path: STRING_32
-			-- Default database location
+			-- Default database location (colocated with executable)
+		local
+			l_env: EXECUTION_ENVIRONMENT
+			l_path: PATH
 		once
-			Result := "kb.db"
+			create l_env
+			-- Get executable directory
+			create l_path.make_from_string (l_env.current_working_path.out)
+			if attached {ARGUMENTS_32}.command_name as cmd then
+				create l_path.make_from_string (cmd)
+				if attached l_path.parent as parent_dir then
+					l_path := parent_dir.extended ("kb.db")
+					Result := l_path.out
+				else
+					Result := "kb.db"
+				end
+			else
+				Result := "kb.db"
+			end
 		end
 
 feature -- Status
@@ -142,6 +158,7 @@ feature -- Schema
 			create_patterns_table
 			create_translations_table
 			create_fts5_index
+			create_faq_tables
 		end
 
 feature {NONE} -- Schema Creation
@@ -289,6 +306,48 @@ feature {NONE} -- Schema Creation
 					content_id,
 					title,
 					body,
+					tags,
+					tokenize='porter unicode61'
+				)
+			]")
+		end
+
+	create_faq_tables
+			-- Create FAQ cache tables for emergent Q&A system
+		do
+			-- Main FAQ table
+			db.execute ("[
+				CREATE TABLE IF NOT EXISTS faqs (
+					id INTEGER PRIMARY KEY,
+					question TEXT NOT NULL,
+					keywords TEXT,
+					answer TEXT NOT NULL,
+					sources TEXT,
+					tags TEXT,
+					hit_count INTEGER DEFAULT 0,
+					helpful_count INTEGER DEFAULT 0,
+					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					kb_version INTEGER DEFAULT 1
+				)
+			]")
+			
+			-- Normalized tags for efficient queries
+			db.execute ("[
+				CREATE TABLE IF NOT EXISTS faq_tags (
+					faq_id INTEGER REFERENCES faqs(id) ON DELETE CASCADE,
+					tag TEXT NOT NULL,
+					PRIMARY KEY (faq_id, tag)
+				)
+			]")
+			db.execute ("CREATE INDEX IF NOT EXISTS idx_faq_tag ON faq_tags(tag)")
+			
+			-- FTS5 index for FAQ search
+			db.execute ("[
+				CREATE VIRTUAL TABLE IF NOT EXISTS faq_search USING fts5(
+					faq_id,
+					question,
+					answer,
+					keywords,
 					tags,
 					tokenize='porter unicode61'
 				)
@@ -841,34 +900,44 @@ feature {NONE} -- FTS5 Query Formatting
 
 	format_fts5_query (a_query: READABLE_STRING_GENERAL): STRING_32
 			-- Format query for FTS5 search
-			-- Filters stop words, joins remaining with AND
+			-- Preserves OR operator, joins other words with AND
 		local
 			l_words: LIST [STRING_32]
 			l_word: STRING_32
 			l_lower: STRING_32
+			l_last_was_or: BOOLEAN
 		do
 			create Result.make (a_query.count + 20)
 			l_words := a_query.to_string_32.split (' ')
-			
+
 			from l_words.start until l_words.after loop
 				l_word := l_words.item
 				l_word.left_adjust
 				l_word.right_adjust
 				if not l_word.is_empty then
-					-- Strip punctuation from word
-					l_word := strip_punctuation (l_word)
-					l_lower := l_word.as_lower
-					if not l_word.is_empty and then not is_stop_word (l_lower) then
+					-- Check for FTS5 OR operator (preserve it)
+					if l_word.same_string ("OR") then
 						if Result.count > 0 then
-							Result.append (" AND ")
+							Result.append (" OR ")
+							l_last_was_or := True
 						end
-						Result.append (l_word)
-						Result.append_character ('*')
+					else
+						-- Strip punctuation from word
+						l_word := strip_punctuation (l_word)
+						l_lower := l_word.as_lower
+						if not l_word.is_empty and then not is_stop_word (l_lower) then
+							if Result.count > 0 and then not l_last_was_or then
+								Result.append (" AND ")
+							end
+							Result.append (l_word)
+							Result.append_character ('*')
+							l_last_was_or := False
+						end
 					end
 				end
 				l_words.forth
 			end
-			
+
 			-- Fallback: if all words were stop words, use original query
 			if Result.is_empty then
 				Result.append_string_general (a_query)
@@ -901,8 +970,8 @@ feature {NONE} -- FTS5 Query Formatting
 			Result.extend ("to"); Result.extend ("for"); Result.extend ("of")
 			Result.extend ("with"); Result.extend ("by"); Result.extend ("from")
 			Result.extend ("about"); Result.extend ("into"); Result.extend ("through")
-			-- Conjunctions
-			Result.extend ("and"); Result.extend ("or"); Result.extend ("but")
+			-- Conjunctions (note: "or" excluded - it's an FTS5 operator)
+			Result.extend ("and"); Result.extend ("but")
 			Result.extend ("if"); Result.extend ("then"); Result.extend ("so")
 			-- Verbs (common)
 			Result.extend ("is"); Result.extend ("are"); Result.extend ("was")
@@ -1088,8 +1157,13 @@ feature -- Clear Operations
 			is_open: is_open
 		do
 			db.execute ("DELETE FROM kb_search")
+			db.execute ("DELETE FROM faq_search")
+			db.execute ("DELETE FROM faq_tags")
+			db.execute ("DELETE FROM faqs")
 			db.execute ("DELETE FROM features")
+			db.execute ("DELETE FROM class_parents")
 			db.execute ("DELETE FROM classes")
+			db.execute ("DELETE FROM libraries")
 			db.execute ("DELETE FROM examples")
 			db.execute ("DELETE FROM errors")
 			db.execute ("DELETE FROM patterns")
@@ -1303,10 +1377,16 @@ feature -- Cleanup
 
 	close
 			-- Close database connection
+		local
+			l_rescued: BOOLEAN
 		do
-			if db.is_open then
+			if not l_rescued and then db.is_open then
 				db.close
 			end
+		rescue
+			l_rescued := True
+			-- Ignore errors during close to prevent crash
+			retry
 		end
 
 invariant

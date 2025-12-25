@@ -85,6 +85,10 @@ feature -- Commands
 				cmd_stats
 			elseif l_cmd.same_string ("clear") then
 				process_clear_command (a_args)
+			elseif l_cmd.same_string ("ai") then
+				process_ai_command (a_args)
+			elseif l_cmd.same_string ("ask") then
+				process_ask_command (a_args)
 			elseif l_cmd.same_string ("help") or l_cmd.same_string ("--help") or l_cmd.same_string ("-h") then
 				show_help
 			else
@@ -188,6 +192,218 @@ feature -- Commands
 				if l_stats.errors > 0 then
 					io.put_string ("  - " + l_stats.errors.out + " errors%N")
 				end
+			end
+		end
+
+feature -- AI Commands
+
+	process_ai_command (a_args: ARGUMENTS_32)
+			-- Handle 'ai' subcommand
+		local
+			l_subcmd: STRING_32
+		do
+			if a_args.argument_count < 2 then
+				cmd_ai_status
+			else
+				l_subcmd := a_args.argument (2).as_lower
+				if l_subcmd.same_string ("status") then
+					cmd_ai_status
+				elseif l_subcmd.same_string ("setup") then
+					cmd_ai_setup
+				elseif l_subcmd.same_string ("on") then
+					cmd_ai_on
+				elseif l_subcmd.same_string ("off") then
+					cmd_ai_off
+				elseif l_subcmd.same_string ("provider") then
+					if a_args.argument_count >= 3 then
+						cmd_ai_provider (a_args.argument (3))
+					else
+						io.put_string ("Usage: kb ai provider <name>%N")
+						io.put_string ("Available: claude, openai, gemini, grok, ollama%N")
+					end
+				elseif l_subcmd.same_string ("prompt") then
+					if a_args.argument_count >= 3 then
+						cmd_ai_prompt (a_args.argument (3))
+					else
+						io.put_string ("Usage: kb ai prompt <query>%N")
+					end
+				else
+					io.put_string ("Unknown AI command: " + l_subcmd.out + "%N")
+					io.put_string ("Available: status, setup, on, off, provider, prompt%N")
+				end
+			end
+		end
+
+	cmd_ai_status
+			-- Show AI configuration status
+		do
+			ensure_ai_config
+			if attached ai_config as cfg then
+				io.put_string (cfg.status_report)
+			end
+		end
+
+	cmd_ai_setup
+			-- Show setup instructions for AI providers
+		do
+			io.put_string ("SETTING UP AI ACCESS FOR SIMPLE_KB%N")
+			io.put_string ("==================================%N%N")
+			io.put_string ("simple_kb works great without AI (FTS5 search).%N")
+			io.put_string ("Adding AI enables natural language queries and%N")
+			io.put_string ("intelligent answer synthesis.%N%N")
+			io.put_string ("OPTION 1: Local AI (Free, Private)%N")
+			io.put_string ("---------------------------------%N")
+			io.put_string ("Install Ollama: https://ollama.com/download%N%N")
+			io.put_string ("Then run:%N")
+			io.put_string ("  ollama pull llama3%N")
+			io.put_string ("  ollama serve%N%N")
+			io.put_string ("simple_kb will auto-detect Ollama at localhost:11434.%N%N")
+			io.put_string ("OPTION 2: Claude API (Best Quality)%N")
+			io.put_string ("-----------------------------------%N")
+			io.put_string ("1. Get API key: https://console.anthropic.com/%N")
+			io.put_string ("2. Set environment variable:%N")
+			io.put_string ("   Windows: setx ANTHROPIC_API_KEY %"sk-ant-...%"%N")
+			io.put_string ("   Linux:   export ANTHROPIC_API_KEY=%"sk-ant-...%"%N")
+			io.put_string ("3. Restart terminal%N%N")
+			io.put_string ("OPTION 3: OpenAI API%N")
+			io.put_string ("--------------------%N")
+			io.put_string ("1. Get API key: https://platform.openai.com/%N")
+			io.put_string ("2. Set OPENAI_API_KEY environment variable%N%N")
+			io.put_string ("OPTION 4: Google Gemini API%N")
+			io.put_string ("---------------------------%N")
+			io.put_string ("1. Get API key: https://aistudio.google.com/%N")
+			io.put_string ("2. Set GOOGLE_AI_KEY environment variable%N%N")
+			io.put_string ("OPTION 5: xAI Grok API%N")
+			io.put_string ("----------------------%N")
+			io.put_string ("1. Get API key: https://console.x.ai/%N")
+			io.put_string ("2. Set XAI_API_KEY (or GROK_API_KEY) environment variable%N%N")
+			io.put_string ("VERIFY SETUP%N")
+			io.put_string ("------------%N")
+			io.put_string ("Run: kb ai status%N")
+		end
+
+	cmd_ai_on
+			-- Enable AI-assisted mode
+		do
+			ensure_ai_config
+			if attached ai_config as cfg then
+				if cfg.has_ai_configured then
+					cfg.enable_ai
+					io.put_string ("AI mode ENABLED%N")
+					if attached cfg.active_provider as prov then
+						io.put_string ("Using provider: " + prov.out + "%N")
+					end
+				else
+					io.put_string ("No AI providers configured.%N")
+					io.put_string ("Run 'kb ai setup' for instructions.%N")
+				end
+			end
+		end
+
+	cmd_ai_off
+			-- Disable AI mode
+		do
+			ensure_ai_config
+			if attached ai_config as cfg then
+				cfg.disable_ai
+			end
+			io.put_string ("AI mode DISABLED (using FTS5 only)%N")
+		end
+
+	cmd_ai_provider (a_name: STRING_32)
+			-- Switch active AI provider
+		do
+			ensure_ai_config
+			if attached ai_config as cfg then
+				if cfg.has_provider (a_name) then
+					cfg.set_provider (a_name)
+					io.put_string ("Switched to provider: " + a_name.out + "%N")
+				else
+					io.put_string ("Provider not available: " + a_name.out + "%N")
+					io.put_string ("Configured providers: ")
+					across cfg.available_providers as prov loop
+						io.put_string (prov.out + " ")
+					end
+					io.put_string ("%N")
+				end
+			end
+		end
+
+	cmd_ai_prompt (a_query: STRING_32)
+			-- Generate a prompt for manual AI use
+		do
+			io.put_string ("=== EIFFEL KNOWLEDGE BASE QUERY ===%N%N")
+			io.put_string ("Copy this prompt to your AI:%N%N")
+			io.put_string ("---%N")
+			io.put_string ("I am working with Eiffel programming language.%N")
+			io.put_string ("I need help with: " + a_query + "%N%N")
+			io.put_string ("Context about Eiffel:%N")
+			io.put_string ("- Uses Design by Contract (require/ensure/invariant)%N")
+			io.put_string ("- Void-safe (detachable/attached types)%N")
+			io.put_string ("- SCOOP for concurrency%N")
+			io.put_string ("- Libraries use simple_* naming convention%N%N")
+			io.put_string ("Please provide:%N")
+			io.put_string ("1. Direct answer with Eiffel code examples%N")
+			io.put_string ("2. Relevant class/feature names to look up%N")
+			io.put_string ("3. Any library dependencies needed%N")
+			io.put_string ("---%N")
+		end
+
+	ensure_ai_config
+			-- Ensure AI config is initialized
+		do
+			if ai_config = Void then
+				create ai_config.make
+			end
+		end
+
+	process_ask_command (a_args: ARGUMENTS_32)
+			-- Handle 'ask' subcommand for AI-powered queries
+		local
+			l_query: STRING_32
+			i: INTEGER
+		do
+			if a_args.argument_count < 2 then
+				io.put_string ("Usage: kb ask <natural language question>%N")
+				io.put_string ("Example: kb ask What is the best library for JSON?%N")
+			else
+				-- Build query from all remaining args
+				create l_query.make (100)
+				from i := 2 until i > a_args.argument_count loop
+					if i > 2 then
+						l_query.append_character (' ')
+					end
+					l_query.append (a_args.argument (i))
+					i := i + 1
+				end
+				cmd_ask (l_query)
+			end
+		end
+
+	cmd_ask (a_query: STRING_32)
+			-- Process AI-powered natural language query
+		local
+			l_router: KB_AI_ROUTER
+			l_result: KB_QUERY_RESULT
+		do
+			ensure_ai_config
+			if attached ai_config as cfg then
+				create l_router.make (db, cfg)
+				
+				if l_router.is_ai_available then
+					io.put_string ("Querying with AI (")
+					if attached cfg.active_provider as prov then
+						io.put_string (prov.out)
+					end
+					io.put_string (")...%N%N")
+				else
+					io.put_string ("AI not available, using keyword search...%N%N")
+				end
+				
+				l_result := l_router.process_query (a_query)
+				io.put_string (l_result.formatted)
+			else
+				io.put_string ("Could not initialize AI configuration.%N")
 			end
 		end
 
@@ -841,13 +1057,18 @@ feature -- Other Commands
 			else
 				io.put_string ("Ingesting source files from: " + a_path.out + "%N")
 				create l_ingester.make (db)
-				l_ingester.set_verbose (True)
 
 				-- Check if it's the base path with simple_* libraries
 				if has_simple_libraries (a_path) then
+					-- Use batch mode (progress format, no verbose)
 					l_ingester.ingest_all_simple_libraries (a_path)
+				elseif has_ecf_subdirectories (a_path) then
+					-- Directory contains subdirectories with ECF files (e.g. EiffelStudio library)
+					-- Use batch mode (progress format, no verbose)
+					l_ingester.ingest_directory_recursive (a_path)
 				else
-					-- Treat as single library - look for src subdirectory
+					-- Single library - use verbose mode
+					l_ingester.set_verbose (True)
 					l_lib_name := extract_library_name (a_path)
 					-- Index ECF file
 					l_ingester.ingest_ecf (l_lib_name, a_path.out)
@@ -939,6 +1160,8 @@ feature -- Clear Commands
 						io.put_string ("Usage: kb clear library <name>%N")
 						io.put_string ("Example: kb clear library simple_json%N")
 					end
+				elseif l_target.same_string ("faqs") or l_target.same_string ("faq") then
+					cmd_clear_faqs
 				elseif l_target.same_string ("help") then
 					show_clear_help
 				else
@@ -1030,6 +1253,16 @@ Clear Commands:
 			end
 		end
 
+	cmd_clear_faqs
+			-- Clear FAQ cache
+		do
+			io.put_string ("Clearing FAQ cache...%N")
+			db.db.execute ("DELETE FROM faq_search")
+			db.db.execute ("DELETE FROM faq_tags")
+			db.db.execute ("DELETE FROM faqs")
+			io.put_string ("FAQ cache cleared. Fresh answers will be generated from KB.%N")
+		end
+
 	cmd_clear_library (a_name: STRING_32)
 			-- Clear a specific library's classes and features
 		local
@@ -1074,12 +1307,21 @@ USAGE:
     kb <command> [arguments]
 
 SEARCH COMMANDS:
+    ask <question>     AI-powered natural language query
     search <query>     Full-text search across all content
     class <name>       Show class details and features
     feature <class>.<name>  Show feature with contracts
     error <code>       Look up compiler error code
     pattern <name>     Show Eiffel design pattern
     example <title>    Show full Rosetta Code example
+
+AI COMMANDS:
+    ai                 Show AI configuration status
+    ai status          Show AI provider status
+    ai setup           Show setup instructions
+    ai on              Enable AI-assisted mode
+    ai off             Disable AI (use direct search)
+    ai provider <name> Switch AI provider
 
 ADMIN COMMANDS:
     ingest <path>      Index source files from path
@@ -1315,10 +1557,27 @@ feature {NONE} -- Implementation
 	db: KB_DATABASE
 			-- Database connection
 
+	ai_config: detachable KB_AI_CONFIG
+			-- AI provider configuration (lazy initialized)
+
 	default_db_path: STRING_32
-			-- Default database path
+			-- Default database path (colocated with executable)
+		local
+			l_path: PATH
+			l_args: ARGUMENTS_32
 		once
-			Result := "kb.db"
+			create l_args
+			if attached l_args.command_name as cmd then
+				create l_path.make_from_string (cmd)
+				if attached l_path.parent as parent_dir then
+					l_path := parent_dir.extended ("kb.db")
+					Result := l_path.out
+				else
+					Result := "kb.db"
+				end
+			else
+				Result := "kb.db"
+			end
 		end
 
 	truncate (a_text: STRING_32; a_max: INTEGER): STRING_32
@@ -1353,6 +1612,34 @@ feature {NONE} -- Implementation
 				end
 			end
 		end
+	has_ecf_subdirectories (a_path: READABLE_STRING_GENERAL): BOOLEAN
+			-- Does path contain subdirectories that have ECF files?
+			-- Used to detect general Eiffel library directories (like EiffelStudio library)
+		local
+			l_dir, l_subdir: DIRECTORY
+			l_subpath: PATH
+			l_ecf_path: PATH
+		do
+			create l_dir.make (a_path.out)
+			if l_dir.exists then
+				across l_dir.entries as entry loop
+					if not entry.name.out.starts_with (".") then
+						create l_subpath.make_from_string (a_path.out)
+						l_subpath := l_subpath.extended (entry.name.out)
+						create l_subdir.make_with_path (l_subpath)
+						if l_subdir.exists then
+							-- Check if subdirectory contains an ECF file with same name
+							l_ecf_path := l_subpath.extended (entry.name.out + ".ecf")
+							if (create {RAW_FILE}.make_with_path (l_ecf_path)).exists then
+								Result := True
+							end
+						end
+					end
+				end
+			end
+		end
+
+
 
 	extract_library_name (a_path: READABLE_STRING_GENERAL): STRING_32
 			-- Extract library name from path

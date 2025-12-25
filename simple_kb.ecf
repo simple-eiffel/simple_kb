@@ -19,6 +19,9 @@
 		<library name="simple_cli" location="$SIMPLE_EIFFEL/simple_cli/simple_cli.ecf"/>
 		<library name="simple_eiffel_parser" location="$SIMPLE_EIFFEL/simple_eiffel_parser/simple_eiffel_parser.ecf"/>
 		<library name="simple_xml" location="$SIMPLE_EIFFEL/simple_xml/simple_xml.ecf"/>
+		<library name="simple_logger" location="$SIMPLE_EIFFEL/simple_logger/simple_logger.ecf"/>
+		<library name="simple_process" location="$SIMPLE_EIFFEL/simple_process/simple_process.ecf"/>
+		<library name="simple_ai_client" location="$SIMPLE_EIFFEL/simple_ai_client/simple_ai_client.ecf"/>
 		<cluster name="src" location=".\src\" recursive="true"/>
 	</target>
 	<target name="simple_kb_tests" extends="simple_kb">

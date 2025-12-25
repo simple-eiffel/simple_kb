@@ -77,6 +77,15 @@ feature -- Tests
 			run_test (agent lib_tests.test_ingester_parse_file, "test_ingester_parse_file")
 			run_test (agent lib_tests.test_ingester_stats, "test_ingester_stats")
 
+			io.put_string ("%NIngester Regression Tests (Parser Issues):%N")
+			run_test (agent lib_tests.test_ingester_feature_count_not_one, "test_ingester_feature_count_not_one")
+			run_test (agent lib_tests.test_ingester_average_features_per_class, "test_ingester_average_features_per_class")
+			run_test (agent lib_tests.test_stdlib_parsing_not_all_errors, "test_stdlib_parsing_not_all_errors")
+			run_test (agent lib_tests.test_parser_exception_handling, "test_parser_exception_handling")
+			run_test (agent lib_tests.test_minimal_class_parsing, "test_minimal_class_parsing")
+			run_test (agent lib_tests.test_sed_meta_model_file, "test_sed_meta_model_file")
+			run_test (agent lib_tests.test_long_lines_file, "test_long_lines_file")
+
 			io.put_string ("%NRosetta Importer Tests:%N")
 			run_test (agent lib_tests.test_rosetta_importer_create, "test_rosetta_importer_create")
 			run_test (agent lib_tests.test_rosetta_import_all, "test_rosetta_import_all")
