@@ -39,6 +39,10 @@ feature -- Access
 	use_ai_mode: BOOLEAN
 	last_mode_used: STRING_32
 	last_keywords: detachable STRING_32
+	last_raw_response: detachable STRING_32
+			-- Raw AI response before sanitization (for debugging)
+	debug_mode: BOOLEAN
+			-- Enable verbose logging
 
 feature -- Status
 
@@ -106,6 +110,13 @@ feature -- 4-Phase AI Cascade
 					Result.set_ai_provider (p)
 				end
 				l_keywords := extract_keywords (l_client, a_query)
+				-- Fallback: if AI returned garbage, use simple query tokenization
+				if l_keywords.is_empty or else is_garbage_keywords (l_keywords) then
+					l_keywords := simple_tokenize (a_query)
+					if debug_mode then
+						io.put_string ("  [DEBUG] Fallback to simple tokenization: " + l_keywords.out + "%N")
+					end
+				end
 				last_keywords := l_keywords
 				l_tags := tag_vocab.tags_for_keywords (l_keywords)
 
@@ -131,8 +142,19 @@ feature {NONE} -- Phase 1: Keywords
 		do
 			l_response := a_client.ask_with_system (keyword_prompt, a_query)
 			if l_response.is_success then
+				last_raw_response := l_response.text.twin
+				if debug_mode then
+					io.put_string ("  [DEBUG] Raw AI response: " + l_response.text.out + "%N")
+				end
 				Result := sanitize_keywords (l_response.text)
+				if debug_mode then
+					io.put_string ("  [DEBUG] Sanitized keywords: " + Result.out + "%N")
+				end
 			else
+				last_raw_response := Void
+				if debug_mode and attached l_response.error_message as e then
+					io.put_string ("  [DEBUG] AI error: " + e.out + "%N")
+				end
 				create Result.make_empty
 			end
 		end
@@ -287,7 +309,7 @@ feature {NONE} -- Prompts
 
 	keyword_prompt: STRING_32
 		once
-			Result := {STRING_32} "TASK: Extract FTS5 search terms from Eiffel question. Return ONLY UPPER_SNAKE_CASE class names separated by OR. No explanations. 1-3 terms. Examples: JSON->SIMPLE_JSON, HTTP->SIMPLE_HTTP, files->SIMPLE_FILE. SEARCH TERMS ONLY:"
+			Result := {STRING_32} "Extract 2-4 search keywords from this Eiffel question. Return lowercase words separated by spaces. Focus on: programming concepts, language features, library names. Examples: 'json parsing' -> json parse, 'HTTP requests' -> http request, 'multiple inheritance' -> inherit multiple class. KEYWORDS ONLY:"
 		end
 
 	synthesis_prompt: STRING_32
@@ -305,40 +327,90 @@ feature {NONE} -- Sanitization
 	sanitize_keywords (a_raw: STRING_32): STRING_32
 		local
 			l_words: LIST [STRING_32]
-			l_word, l_clean: STRING_32
+			l_word: STRING_32
 		do
 			create Result.make (a_raw.count)
 			l_words := a_raw.split (' ')
 			from l_words.start until l_words.after loop
-				l_word := l_words.item
+				l_word := l_words.item.twin
 				l_word.left_adjust
 				l_word.right_adjust
-				if not l_word.is_empty then
-					l_clean := extract_upper (l_word)
-					if not l_clean.is_empty then
-						if Result.count > 0 then Result.append (" ") end
-						Result.append (l_clean)
-					elseif l_word.same_string ("OR") and Result.count > 0 then
-						Result.append (" OR")
-					end
+				-- Remove punctuation
+				l_word.prune_all (',')
+				l_word.prune_all ('.')
+				l_word.prune_all (':')
+				l_word.prune_all ('"')
+				l_word.prune_all ('%'')
+				if l_word.count >= 3 and then not is_stopword (l_word.as_lower) then
+					if Result.count > 0 then Result.append (" ") end
+					Result.append (l_word.as_lower)
 				end
 				l_words.forth
 			end
 		end
 
-	extract_upper (a_word: STRING_32): STRING_32
-		local
-			i: INTEGER
-			c: CHARACTER_32
+feature -- Debug
+
+	set_debug (a_val: BOOLEAN)
 		do
-			create Result.make (a_word.count)
-			from i := 1 until i > a_word.count loop
-				c := a_word.item (i)
-				if c.is_upper or c = '_' or c.is_digit then
-					Result.append_character (c)
+			debug_mode := a_val
+		end
+
+feature {NONE} -- Fallback Tokenization
+
+	is_garbage_keywords (a_kw: STRING_32): BOOLEAN
+			-- Are these keywords unlikely to match anything?
+		local
+			l_words: LIST [STRING_32]
+		do
+			l_words := a_kw.split (' ')
+			-- Garbage if only 1 word and it's very long (made-up compound)
+			-- or if it contains weird patterns
+			Result := l_words.count = 1 and then a_kw.count > 25
+			if not Result then
+				-- Check for made-up compound words like SIMPLE_MULTI_INHERITANCE
+				across l_words as w loop
+					if w.count > 20 then
+						Result := True
+					end
 				end
-				i := i + 1
 			end
+		end
+
+	simple_tokenize (a_query: STRING_32): STRING_32
+			-- Extract simple search terms from query
+		local
+			l_words: LIST [STRING_32]
+			l_word: STRING_32
+		do
+			create Result.make (100)
+			l_words := a_query.split (' ')
+			across l_words as w loop
+				l_word := w.as_lower
+				-- Skip common words
+				if l_word.count > 3 and then not is_stopword (l_word) then
+					if Result.count > 0 then
+						Result.append (" ")
+					end
+					Result.append (l_word)
+				end
+			end
+		end
+
+	is_stopword (a_word: STRING_32): BOOLEAN
+			-- Is this a common word to skip?
+		do
+			Result := a_word.same_string ("the") or else
+				a_word.same_string ("how") or else
+				a_word.same_string ("what") or else
+				a_word.same_string ("does") or else
+				a_word.same_string ("can") or else
+				a_word.same_string ("use") or else
+				a_word.same_string ("with") or else
+				a_word.same_string ("from") or else
+				a_word.same_string ("that") or else
+				a_word.same_string ("this") or else
+				a_word.same_string ("eiffel")
 		end
 
 invariant

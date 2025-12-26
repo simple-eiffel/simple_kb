@@ -3,3 +3,4 @@ EIFGENs/
 !bin/kb.db
 *.log
 data/
+bin/kb.exe

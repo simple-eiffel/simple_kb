@@ -1,0 +1,27 @@
+note
+	description: "[
+		KB_AI_CONFIG - AI Provider Configuration Manager
+
+		Manages AI provider credentials and configuration for simple_kb.
+		Detects available providers from environment variables and
+		local services (Ollama).
+
+		Supported Providers:
+		- ollama: Local inference (auto-detected at localhost:11434)
+		- claude: Anthropic API (ANTHROPIC_API_KEY)
+		- openai: OpenAI API (OPENAI_API_KEY)
+		- gemini: Google AI (GOOGLE_AI_KEY)
+		- grok: xAI API (XAI_API_KEY)
+
+		Configuration persists to kb.toml in same directory as executable.
+
+		Usage:
+			config: KB_AI_CONFIG
+			create config.make
+			if config.has_ai_configured then
+				config.set_provider ("claude")  -- Automatically saved
+			end
+	]"
+	author: "Simple Eiffel"
+	date: "`$Date`$"
+	revision: "`$Revision`$"

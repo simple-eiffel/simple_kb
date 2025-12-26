@@ -175,7 +175,7 @@ feature -- Display
 
 			-- Synthesized answer (if available)
 			if has_synthesized_answer then
-				Result.append ("%N" + synthesized_answer + "%N")
+				Result.append ("%N" + sanitize_for_console (synthesized_answer) + "%N")
 				if not citations.is_empty then
 					Result.append ("%NSources:%N")
 					from i := 1 until i > citations.count loop
@@ -185,27 +185,41 @@ feature -- Display
 				end
 			end
 
-			-- Raw results
-			if not raw_results.is_empty then
-				if has_synthesized_answer then
-					Result.append ("%N--- Raw Results ---%N")
+			-- Raw results (only show when NO AI synthesis)
+			if not has_synthesized_answer then
+				if not raw_results.is_empty then
+					Result.append ("Found " + result_count.out + " results:%N%N")
+					from i := 1 until i > raw_results.count.min (10) loop
+						Result.append (raw_results [i].formatted + "%N")
+						i := i + 1
+					end
+					if result_count > 10 then
+						Result.append ("... and " + (result_count - 10).out + " more%N")
+					end
+				else
+					Result.append ("No results found.%N")
 				end
-				Result.append ("Found " + result_count.out + " results:%N%N")
-				from i := 1 until i > raw_results.count.min (10) loop
-					Result.append (raw_results [i].formatted + "%N")
-					i := i + 1
-				end
-				if result_count > 10 then
-					Result.append ("... and " + (result_count - 10).out + " more%N")
-				end
-			elseif not has_synthesized_answer then
-				Result.append ("No results found.%N")
 			end
 
 			-- AI note
 			if not ai_note.is_empty then
 				Result.append ("%NNote: " + ai_note + "%N")
 			end
+		end
+
+feature {NONE} -- Helpers
+
+	sanitize_for_console (s: STRING_32): STRING_32
+			-- Replace problematic Unicode characters with ASCII equivalents
+		do
+			Result := s.twin
+			Result.replace_substring_all ({STRING_32} "→", {STRING_32} "->")
+			Result.replace_substring_all ({STRING_32} "←", {STRING_32} "<-")
+			Result.replace_substring_all ({STRING_32} "∘", {STRING_32} "o")
+			Result.replace_substring_all ({STRING_32} "≥", {STRING_32} ">=")
+			Result.replace_substring_all ({STRING_32} "≤", {STRING_32} "<=")
+			Result.replace_substring_all ({STRING_32} "≠", {STRING_32} "/=")
+			Result.replace_substring_all ({STRING_32} "•", {STRING_32} "*")
 		end
 
 invariant

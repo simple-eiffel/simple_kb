@@ -94,6 +94,25 @@ feature -- Queries
 			end
 		end
 
+	recent_faqs (a_limit: INTEGER): ARRAYED_LIST [KB_FAQ]
+			-- Get most recent FAQs
+		require
+			positive_limit: a_limit > 0
+		local
+			l_result: SIMPLE_SQL_RESULT
+			l_faq: KB_FAQ
+		do
+			create Result.make (a_limit)
+			l_result := db.query_with_args (
+				"SELECT * FROM faqs ORDER BY id DESC LIMIT ?",
+				<<a_limit>>
+			)
+			across l_result.rows as row loop
+				create l_faq.make_from_row (row)
+				Result.extend (l_faq)
+			end
+		end
+
 feature -- Commands
 
 	store_faq (a_faq: KB_FAQ)
@@ -138,6 +157,37 @@ feature -- Commands
 	bump_kb_version
 		do
 			current_kb_version := current_kb_version + 1
+		end
+
+	has_faq (a_id: INTEGER): BOOLEAN
+			-- Does FAQ with this ID exist?
+		local
+			l_result: SIMPLE_SQL_RESULT
+		do
+			l_result := db.query_with_args (
+				"SELECT id FROM faqs WHERE id = ?", <<a_id>>)
+			Result := not l_result.rows.is_empty
+		end
+
+	delete_faq (a_id: INTEGER)
+			-- Delete FAQ by ID
+		require
+			faq_exists: has_faq (a_id)
+		do
+			-- Delete from FTS index first
+			db.execute_with_args ("DELETE FROM faq_search WHERE faq_id = ?", <<a_id.out>>)
+			-- Delete from tags
+			db.execute_with_args ("DELETE FROM faq_tags WHERE faq_id = ?", <<a_id>>)
+			-- Delete the FAQ
+			db.execute_with_args ("DELETE FROM faqs WHERE id = ?", <<a_id>>)
+		end
+
+	delete_all
+			-- Delete all FAQs
+		do
+			db.execute ("DELETE FROM faq_search")
+			db.execute ("DELETE FROM faq_tags")
+			db.execute ("DELETE FROM faqs")
 		end
 
 feature {NONE} -- Implementation

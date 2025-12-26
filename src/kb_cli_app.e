@@ -33,6 +33,11 @@ inherit
 create
 	make
 
+feature -- Constants
+
+	Version: STRING = "1.0.0"
+			-- Current version of KB CLI
+
 feature {NONE} -- Initialization
 
 	make
@@ -44,7 +49,7 @@ feature {NONE} -- Initialization
 			create db.make (default_db_path)
 
 			if l_args.argument_count = 0 then
-				show_help
+				run_interactive_mode
 			else
 				process_command (l_args)
 			end
@@ -75,10 +80,14 @@ feature -- Commands
 				process_feature_command (a_args)
 			elseif l_cmd.same_string ("library") or l_cmd.same_string ("lib") then
 				process_library_command (a_args)
+			elseif l_cmd.same_string ("faq") then
+				process_faq_command (a_args)
 			elseif l_cmd.same_string ("ingest") then
 				process_ingest_command (a_args)
 			elseif l_cmd.same_string ("rosetta") then
 				process_rosetta_command (a_args)
+			elseif l_cmd.same_string ("mbox") then
+				process_mbox_command (a_args)
 			elseif l_cmd.same_string ("seed") then
 				cmd_seed
 			elseif l_cmd.same_string ("stats") then
@@ -171,6 +180,37 @@ feature -- Commands
 			end
 		end
 
+	process_mbox_command (a_args: ARGUMENTS_32)
+			-- Handle 'mbox' subcommand (import mailing list archive)
+		local
+			l_path: STRING_32
+		do
+			if a_args.argument_count < 2 then
+				io.put_string ("Usage: kb mbox <file.mbox>%N")
+				io.put_string ("Import Q&A from mbox archive (e.g., Google Takeout export)%N")
+			else
+				l_path := a_args.argument (2)
+				cmd_mbox (l_path)
+			end
+		end
+
+	cmd_mbox (a_path: STRING_32)
+			-- Import FAQ pairs from mbox file
+		local
+			l_faq_store: KB_FAQ_STORE
+			l_ingester: KB_MBOX_INGESTER
+		do
+			if attached db as l_db then
+				create l_faq_store.make (l_db.db)
+				create l_ingester.make (l_faq_store)
+				io.put_string ("Importing mbox: " + a_path.out + "%N")
+				l_ingester.import_file (a_path, True)
+				io.put_string ("%NImport complete. New FAQs: " + l_ingester.imported_count.out + "%N")
+			else
+				io.put_string ("Error: Database not initialized%N")
+			end
+		end
+
 	cmd_rosetta (a_path: STRING_32)
 			-- Import Rosetta Code examples
 		local
@@ -227,9 +267,11 @@ feature -- AI Commands
 					else
 						io.put_string ("Usage: kb ai prompt <query>%N")
 					end
+				elseif l_subcmd.same_string ("debug") then
+					cmd_ai_debug
 				else
 					io.put_string ("Unknown AI command: " + l_subcmd.out + "%N")
-					io.put_string ("Available: status, setup, on, off, provider, prompt%N")
+					io.put_string ("Available: status, setup, on, off, provider, prompt, debug%N")
 				end
 			end
 		end
@@ -349,6 +391,17 @@ feature -- AI Commands
 			io.put_string ("---%N")
 		end
 
+	cmd_ai_debug
+			-- Toggle AI debug mode
+		do
+			ai_debug_mode := not ai_debug_mode
+			if ai_debug_mode then
+				io.put_string ("AI debug mode ENABLED - verbose logging on%N")
+			else
+				io.put_string ("AI debug mode DISABLED%N")
+			end
+		end
+
 	ensure_ai_config
 			-- Ensure AI config is initialized
 		do
@@ -389,6 +442,7 @@ feature -- AI Commands
 			ensure_ai_config
 			if attached ai_config as cfg then
 				create l_router.make (db, cfg)
+				l_router.set_debug (ai_debug_mode)
 				
 				if l_router.is_ai_available then
 					io.put_string ("Querying with AI (")
@@ -1120,8 +1174,10 @@ feature -- Other Commands
 			-- Show database statistics
 		local
 			l_stats: TUPLE [classes, features, examples, errors, patterns, libraries: INTEGER]
+			l_faq_store: KB_FAQ_STORE
 		do
 			l_stats := db.stats
+			create l_faq_store.make (db.db)
 			io.put_string ("Knowledge Base Statistics%N")
 			io.put_string ("=========================%N%N")
 			io.put_string ("Libraries:    " + l_stats.libraries.out + "%N")
@@ -1130,6 +1186,136 @@ feature -- Other Commands
 			io.put_string ("Examples:     " + l_stats.examples.out + "%N")
 			io.put_string ("Error codes:  " + l_stats.errors.out + "%N")
 			io.put_string ("Patterns:     " + l_stats.patterns.out + "%N")
+			io.put_string ("FAQs:         " + l_faq_store.faq_count.out + "%N")
+		end
+
+feature -- FAQ Commands
+
+	process_faq_command (a_args: ARGUMENTS_32)
+			-- Handle 'faq' subcommand
+		local
+			l_subcmd: STRING_32
+			l_query: STRING_32
+			i: INTEGER
+		do
+			if a_args.argument_count < 2 then
+				cmd_faq_list
+			else
+				l_subcmd := a_args.argument (2)
+				if l_subcmd.same_string ("list") then
+					cmd_faq_list
+				elseif l_subcmd.same_string ("delete") then
+					if a_args.argument_count >= 3 then
+						cmd_faq_delete (a_args.argument (3))
+					else
+						io.put_string ("Usage: faq delete <id> or faq delete all%N")
+					end
+				else
+					-- Join remaining args as search query
+					create l_query.make (100)
+					from i := 2 until i > a_args.argument_count loop
+						if i > 2 then l_query.append_character (' ') end
+						l_query.append (a_args.argument (i))
+						i := i + 1
+					end
+					cmd_faq_search (l_query)
+				end
+			end
+		end
+
+	cmd_faq_list
+			-- List recent FAQs
+		local
+			l_faq_store: KB_FAQ_STORE
+			l_faqs: ARRAYED_LIST [KB_FAQ]
+			i: INTEGER
+		do
+			create l_faq_store.make (db.db)
+			l_faqs := l_faq_store.recent_faqs (20)
+			io.put_string ("Recent FAQs (" + l_faq_store.faq_count.out + " total)%N")
+			io.put_string ("============%N%N")
+			if l_faqs.is_empty then
+				io.put_string ("No FAQs yet. Use 'ask' command to create them.%N")
+			else
+				from i := 1 until i > l_faqs.count loop
+					io.put_string (i.out + ". " + l_faqs [i].question.head (60))
+					if l_faqs [i].question.count > 60 then
+						io.put_string ("...")
+					end
+					io.put_string ("%N")
+					i := i + 1
+				end
+				io.put_string ("%NUse 'faq <query>' to search FAQs%N")
+			end
+		end
+
+	cmd_faq_search (a_query: STRING_32)
+			-- Search FAQs with paginated output
+		local
+			l_faq_store: KB_FAQ_STORE
+			l_faqs: ARRAYED_LIST [KB_FAQ]
+			l_output: STRING_32
+			i: INTEGER
+		do
+			create l_faq_store.make (db.db)
+			l_faqs := l_faq_store.search_faqs (a_query, 10)
+			
+			create l_output.make (5000)
+			l_output.append ("FAQ Search: " + a_query.out + "%N")
+			l_output.append ("===========%N%N")
+			
+			if l_faqs.is_empty then
+				l_output.append ("No matching FAQs found.%N")
+			else
+				from i := 1 until i > l_faqs.count loop
+					l_output.append ("--- FAQ #" + l_faqs [i].id.out + " ---%N")
+					l_output.append ("Q: " + l_faqs [i].question.out + "%N%N")
+					l_output.append ("A: " + l_faqs [i].answer.out + "%N%N")
+					i := i + 1
+				end
+			end
+			
+			pager.show (l_output)
+		end
+
+	cmd_faq_delete (a_target: STRING_32)
+			-- Delete FAQ by ID or all
+		local
+			l_faq_store: KB_FAQ_STORE
+			l_id: INTEGER
+			l_count: INTEGER
+			l_confirm: STRING
+		do
+			create l_faq_store.make (db.db)
+			if a_target.same_string ("all") then
+				l_count := l_faq_store.faq_count
+				if l_count = 0 then
+					io.put_string ("No FAQs to delete.%N")
+				else
+					io.put_string ("WARNING: This will delete ALL " + l_count.out + " FAQs!%N")
+					io.put_string ("Type 'yes' to confirm: ")
+					io.read_line
+					l_confirm := io.last_string.twin
+					l_confirm.left_adjust
+					l_confirm.right_adjust
+					if l_confirm.same_string ("yes") then
+						l_faq_store.delete_all
+						io.put_string ("Deleted all FAQs.%N")
+					else
+						io.put_string ("Cancelled.%N")
+					end
+				end
+			elseif a_target.is_integer then
+				l_id := a_target.to_integer
+				if l_faq_store.has_faq (l_id) then
+					l_faq_store.delete_faq (l_id)
+					io.put_string ("Deleted FAQ #" + l_id.out + "%N")
+				else
+					io.put_string ("FAQ #" + l_id.out + " not found.%N")
+				end
+			else
+				io.put_string ("Usage: faq delete <id> or faq delete all%N")
+			end
 		end
 
 feature -- Clear Commands
@@ -1314,6 +1500,7 @@ SEARCH COMMANDS:
     error <code>       Look up compiler error code
     pattern <name>     Show Eiffel design pattern
     example <title>    Show full Rosetta Code example
+    faq [query]        List or search cached FAQs
 
 AI COMMANDS:
     ai                 Show AI configuration status
@@ -1326,6 +1513,7 @@ AI COMMANDS:
 ADMIN COMMANDS:
     ingest <path>      Index source files from path
     rosetta <path>     Import Rosetta Code examples
+    mbox <file>        Import Q&A from mbox archive
     seed               Populate error codes + patterns
     stats              Show database statistics
     clear <target>     Clear data (all|classes|examples|errors|patterns)
@@ -1360,9 +1548,7 @@ feature -- Interactive Mode
 			l_input: STRING
 			l_done: BOOLEAN
 		do
-			io.put_string ("Eiffel Knowledge Base - Interactive Mode%N")
-			io.put_string ("========================================%N")
-			io.put_string ("Type 'help' for commands, 'quit' to exit%N%N")
+			print_header
 			
 			from l_done := False until l_done loop
 				io.put_string ("kb> ")
@@ -1383,67 +1569,118 @@ feature -- Interactive Mode
 		end
 
 	dispatch_interactive_command (a_input: STRING)
-			-- Parse and dispatch interactive command
+			-- Parse and dispatch interactive command (same commands as CLI)
 		local
 			l_parts: LIST [STRING]
-			l_cmd, l_arg: STRING_32
+			l_cmd, l_arg, l_arg2: STRING_32
 		do
 			l_parts := a_input.split (' ')
 			if l_parts.is_empty then
 				-- Nothing to do
 			else
 				l_cmd := l_parts.first.as_lower.to_string_32
-				
-				-- Get rest of input as argument (everything after first space)
-				if a_input.has (' ') then
-					l_arg := a_input.substring (a_input.index_of (' ', 1) + 1, a_input.count).to_string_32
-					l_arg.left_adjust
+
+				-- Get arguments from parts list
+				if l_parts.count >= 2 then
+					l_arg := l_parts [2].to_string_32
 				else
 					create l_arg.make_empty
 				end
+
+				-- Get third argument if present (for ai provider <name>)
+				if l_parts.count >= 3 then
+					l_arg2 := l_parts [3].to_string_32
+				else
+					create l_arg2.make_empty
+				end
 				
-				-- Command dispatch with shortcuts
-				if l_cmd.same_string ("s") or l_cmd.same_string ("search") then
-					if l_arg.is_empty then
+				-- For commands that need full remaining text (search, ask, example)
+				-- we rebuild it from parts 2 onwards
+				
+
+				-- Command dispatch - same commands as CLI mode
+				if l_cmd.same_string ("ask") then
+					if l_parts.count < 2 then
+						io.put_string ("Usage: ask <natural language question>%N")
+					else
+						cmd_ask (join_parts (l_parts, 2))
+					end
+				elseif l_cmd.same_string ("search") then
+					if l_parts.count < 2 then
 						io.put_string ("Usage: search <query>%N")
 					else
-						cmd_search (l_arg)
+						cmd_search (join_parts (l_parts, 2))
 					end
-				elseif l_cmd.same_string ("c") or l_cmd.same_string ("class") then
+				elseif l_cmd.same_string ("class") then
 					if l_arg.is_empty then
 						io.put_string ("Usage: class <name>%N")
 					else
 						cmd_class (l_arg.as_upper)
 					end
-				elseif l_cmd.same_string ("f") or l_cmd.same_string ("feature") then
+				elseif l_cmd.same_string ("feature") then
 					if l_arg.is_empty then
-						io.put_string ("Usage: feature CLASS.name%N")
+						io.put_string ("Usage: feature <CLASS.name>%N")
 					else
 						process_feature_arg (l_arg)
 					end
-				elseif l_cmd.same_string ("e") or l_cmd.same_string ("error") then
+				elseif l_cmd.same_string ("error") then
 					if l_arg.is_empty or l_arg.same_string ("list") then
 						cmd_error_list
 					else
 						cmd_error_lookup (l_arg.as_upper)
 					end
-				elseif l_cmd.same_string ("p") or l_cmd.same_string ("pattern") then
+				elseif l_cmd.same_string ("pattern") then
 					if l_arg.is_empty or l_arg.same_string ("list") then
 						cmd_pattern_list
 					else
 						cmd_pattern_lookup (l_arg)
 					end
-				elseif l_cmd.same_string ("ex") or l_cmd.same_string ("example") then
-					if l_arg.is_empty then
+				elseif l_cmd.same_string ("example") then
+					if l_parts.count < 2 then
 						io.put_string ("Usage: example <title>%N")
 					else
-						cmd_example (l_arg)
+						cmd_example (join_parts (l_parts, 2))
 					end
-				elseif l_cmd.same_string ("l") or l_cmd.same_string ("lib") or l_cmd.same_string ("library") then
+				elseif l_cmd.same_string ("library") or l_cmd.same_string ("lib") then
 					if l_arg.is_empty or l_arg.same_string ("list") then
 						cmd_library_list
 					else
 						cmd_library (l_arg)
+					end
+				elseif l_cmd.same_string ("faq") then
+					if l_arg.is_empty or l_arg.same_string ("list") then
+						cmd_faq_list
+					elseif l_arg.same_string ("delete") then
+						if l_arg2.is_empty then
+							io.put_string ("Usage: faq delete <id> or faq delete all%N")
+						else
+							cmd_faq_delete (l_arg2)
+						end
+					else
+						cmd_faq_search (join_parts (l_parts, 2))
+					end
+				elseif l_cmd.same_string ("ai") then
+					-- AI subcommands
+					if l_arg.is_empty or l_arg.same_string ("status") then
+						cmd_ai_status
+					elseif l_arg.same_string ("setup") then
+						cmd_ai_setup
+					elseif l_arg.same_string ("on") then
+						cmd_ai_on
+					elseif l_arg.same_string ("off") then
+						cmd_ai_off
+					elseif l_arg.same_string ("provider") then
+						if l_arg2.is_empty then
+							io.put_string ("Usage: ai provider <name>%N")
+							io.put_string ("Available: claude, openai, gemini, grok, ollama%N")
+						else
+							cmd_ai_provider (l_arg2)
+						end
+					elseif l_arg.same_string ("debug") then
+						cmd_ai_debug
+					else
+						io.put_string ("Unknown AI command: " + l_arg.out + "%N")
+						io.put_string ("Available: status, setup, on, off, provider, debug%N")
 					end
 				elseif l_cmd.same_string ("stats") then
 					cmd_stats
@@ -1461,6 +1698,12 @@ feature -- Interactive Mode
 					else
 						cmd_rosetta (l_arg)
 					end
+				elseif l_cmd.same_string ("mbox") then
+					if l_arg.is_empty then
+						io.put_string ("Usage: mbox <file.mbox>%N")
+					else
+						cmd_mbox (l_arg)
+					end
 				elseif l_cmd.same_string ("clear") then
 					if l_arg.is_empty then
 						show_clear_help
@@ -1477,8 +1720,10 @@ feature -- Interactive Mode
 					else
 						show_clear_help
 					end
-				elseif l_cmd.same_string ("help") or l_cmd.same_string ("h") or l_cmd.same_string ("?") then
+				elseif l_cmd.same_string ("help") or l_cmd.same_string ("--help") or l_cmd.same_string ("-h") then
 					show_interactive_help
+				elseif l_cmd.same_string ("cls") or l_cmd.same_string ("clear-screen") then
+					cmd_clear_screen
 				else
 					io.put_string ("Unknown command: " + l_cmd.out + ". Type 'help' for commands.%N")
 				end
@@ -1506,6 +1751,22 @@ feature -- Interactive Mode
 			end
 		end
 
+	print_header
+			-- Print the header banner with version
+		do
+			io.put_string ("Eiffel Knowledge Base v" + Version + "%N")
+			io.put_string ("===================================%N")
+			io.put_string ("Type 'help' for commands, 'quit' to exit%N%N")
+		end
+
+	cmd_clear_screen
+			-- Clear screen and reprint header
+		do
+			-- ANSI escape sequence to clear screen and move cursor to top
+			io.put_string ("%/27/[2J%/27/[H")
+			print_header
+		end
+
 	is_quit_command (a_input: STRING): BOOLEAN
 			-- Is this a quit command?
 		local
@@ -1516,38 +1777,64 @@ feature -- Interactive Mode
 				or l_lower.same_string ("bye") or l_lower.same_string ("q")
 		end
 
+	join_parts (a_parts: LIST [STRING]; a_start: INTEGER): STRING_32
+			-- Join parts from a_start to end with spaces
+		local
+			i: INTEGER
+		do
+			create Result.make (100)
+			from i := a_start until i > a_parts.count loop
+				if i > a_start then
+					Result.append_character (' ')
+				end
+				Result.append (a_parts [i].to_string_32)
+				i := i + 1
+			end
+		end
+
 	show_interactive_help
-			-- Show interactive mode help with shortcuts
+			-- Show interactive mode help (same commands as CLI)
 		do
 			io.put_string ("[
 Interactive Mode Commands
 =========================
 
-SHORTCUTS:
-    s <query>      Search (alias: search)
-    c <name>       Class details (alias: class)
-    f <class.name> Feature details (alias: feature)
-    l <name>       Library details (alias: lib, library)
-    e <code>       Error lookup (alias: error)
-    p <name>       Pattern lookup (alias: pattern)
-    ex <title>     Example code (alias: example)
-    h or ?         This help (alias: help)
-    q              Quit (alias: quit, exit, bye)
+SEARCH COMMANDS:
+    ask <question>     AI-powered natural language query
+    search <query>     Full-text search across all content
+    class <name>       Show class details and features
+    feature <class>.<name>  Show feature with contracts
+    error <code>       Look up compiler error code
+    pattern <name>     Show Eiffel design pattern
+    example <title>    Show full Rosetta Code example
+    faq [query]        List or search cached FAQs
 
-ADMIN:
-    stats          Show database statistics
-    seed           Populate error codes + patterns
-    ingest <path>  Index source files
-    rosetta <path> Import Rosetta examples
-    clear <target> Clear data
+AI COMMANDS:
+    ai                 Show AI configuration status
+    ai status          Show AI provider status
+    ai setup           Show setup instructions
+    ai on              Enable AI-assisted mode
+    ai off             Disable AI (use direct search)
+    ai provider <name> Switch AI provider
+
+ADMIN COMMANDS:
+    ingest <path>      Index source files from path
+    rosetta <path>     Import Rosetta Code examples
+    mbox <file>        Import Q&A from mbox archive
+    seed               Populate error codes + patterns
+    stats              Show database statistics
+    clear <target>     Clear data (all|classes|examples|errors|patterns)
+    help               Show this help message
+    quit               Exit interactive mode
 
 EXAMPLES:
-    s json         # Search for 'json'
-    c SIMPLE_HTTP  # Show class
-    f SIMPLE_HTTP.get  # Show feature
-    l simple_json  # Show library
-    e VEVI         # Look up error
-    p singleton    # Show pattern
+    search json                    # Search for 'json'
+    class SIMPLE_HTTP              # Show class details
+    error VEVI                     # Look up VEVI error
+    pattern singleton              # Show singleton pattern
+    example "Sieve of Eratosthenes"  # Show full example
+    feature SIMPLE_HTTP.get        # Show feature with contracts
+    ask How do I parse JSON?       # AI-powered query
 
 ]")
 		end
@@ -1559,6 +1846,15 @@ feature {NONE} -- Implementation
 
 	ai_config: detachable KB_AI_CONFIG
 			-- AI provider configuration (lazy initialized)
+
+	ai_debug_mode: BOOLEAN
+			-- Enable verbose AI logging
+
+	pager: KB_PAGER
+			-- Output pager for long results
+		once
+			create Result.make (25)
+		end
 
 	default_db_path: STRING_32
 			-- Default database path (colocated with executable)
