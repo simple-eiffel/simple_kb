@@ -1217,10 +1217,10 @@ feature {NONE} -- Parent Operations
 			-- Delete existing parents for this class
 			db.execute_with_args ("DELETE FROM class_parents WHERE class_id = ?", <<a_class.id>>)
 			-- Insert new parents
-			across a_class.parents as p loop
+			across a_class.parents as ic_p loop
 				db.execute_with_args (
 					"INSERT INTO class_parents (class_id, parent_name) VALUES (?, ?)",
-					<<a_class.id, p>>
+					<<a_class.id, ic_p>>
 				)
 			end
 		end

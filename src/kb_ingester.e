@@ -392,8 +392,8 @@ feature -- Ingestion
 									l_class.set_frozen (cls.is_frozen)
 
 									-- Extract parents
-									across cls.parents as p loop
-										l_class.add_parent (p.parent_name.to_string_32)
+									across cls.parents as ic_p loop
+										l_class.add_parent (ic_p.parent_name.to_string_32)
 									end
 
 									-- Add to database
