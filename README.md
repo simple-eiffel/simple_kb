@@ -20,11 +20,19 @@ Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
 
 **Production** - Full-featured CLI and library API
 
-## Statistics
+## Library Structure
 
 | Metric | Count |
 |--------|-------|
-| Libraries indexed | 182 |
+| Source classes | 25 |
+| Test methods | 42 |
+| Dependencies | 13 |
+
+## Database Content (kb.db)
+
+| Indexed Content | Count |
+|-----------------|-------|
+| Libraries | 182 |
 | Classes | 4,613 |
 | Features | 87,780 |
 | Error codes | 31 |
@@ -130,7 +138,7 @@ kb ai "How do I handle void safety in Eiffel?"
 
 ## Rebuilding the Database
 
-A pre-built `bin/kb.db` is included with 4,613 classes and 87,780 features indexed. To rebuild from scratch:
+A pre-built `bin/kb.db` is included with indexed content (see Database Content table above). To rebuild from scratch:
 
 ```bash
 # 1. Clear existing database
