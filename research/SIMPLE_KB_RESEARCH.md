@@ -1,5 +1,8 @@
 # simple_kb Research Notes
 
+
+**Date**: 2025-12-23
+
 **Date:** 2025-12-23
 **Status:** In Progress
 **Goal:** Design an Eiffel Knowledge Base CLI with FTS5 search
