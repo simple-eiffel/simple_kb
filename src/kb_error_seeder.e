@@ -48,7 +48,7 @@ feature {NONE} -- Void Safety Errors
 	seed_void_safety_errors
 			-- VEVI, VUTA, etc.
 		local
-			e: KB_ERROR_INFO
+			l_e: KB_ERROR_INFO
 		do
 			-- VEVI: Variable not properly set
 			create e.make ("VEVI", "Variable not properly set")
@@ -69,11 +69,11 @@ feature {NONE} -- Void Safety Errors
 			e.add_cause ("Calling feature on detachable attribute")
 			e.add_cause ("Function returns detachable type")
 			e.add_cause ("Item from HASH_TABLE or other container")
-			e.add_fix ("Use attached check", "Guard the call with attached", "if attached my_object as obj then obj.do_something end")
-			e.add_fix ("Use check attached", "Assert non-void with check", "check attached my_object as obj then obj.do_something end")
+			e.add_fix ("Use attached check", "Guard the call with attached", "if attached my_object as al_obj then obj.do_something end")
+			e.add_fix ("Use check attached", "Assert non-void with check", "check attached my_object as al_obj then al_obj.do_something end")
 			e.add_fix ("Make it attached", "Change declaration to non-detachable if possible", "my_object: MY_CLASS -- not 'detachable MY_CLASS'")
 			e.set_bad_code ("my_object.do_something -- my_object is detachable!")
-			e.set_good_code ("if attached my_object as l_obj then%N  l_obj.do_something%Nend")
+			e.set_good_code ("if attached my_object as al_l_obj then%N  l_obj.do_something%Nend")
 			e.set_ecma_section ("8.23.14")
 			db.add_error (e)
 
@@ -103,7 +103,7 @@ feature {NONE} -- Type Errors
 	seed_type_errors
 			-- VEEN, VKCN, VTCT, etc.
 		local
-			e: KB_ERROR_INFO
+			l_e: KB_ERROR_INFO
 		do
 			-- VEEN: Identifier not found
 			create e.make ("VEEN", "Identifier not found")
@@ -166,7 +166,7 @@ feature {NONE} -- Feature Errors
 	seed_feature_errors
 			-- VDRS, VUEX, VMFN, etc.
 		local
-			e: KB_ERROR_INFO
+			l_e: KB_ERROR_INFO
 		do
 			-- VDRS: Redefine not selected
 			create e.make ("VDRS", "Redefined feature not selected")
@@ -224,7 +224,7 @@ feature {NONE} -- Inheritance Errors
 	seed_inheritance_errors
 			-- VHRC, VHPR, ECMA inheritance rules
 		local
-			e: KB_ERROR_INFO
+			l_e: KB_ERROR_INFO
 		do
 			-- VHRC: Repeated constraint
 			create e.make ("VHRC", "Repeated inheritance constraint violation")
@@ -262,7 +262,7 @@ feature {NONE} -- Config Errors
 	seed_config_errors
 			-- VD89, VDRC, ECF errors
 		local
-			e: KB_ERROR_INFO
+			l_e: KB_ERROR_INFO
 		do
 			-- VD89: Dependency cycle
 			create e.make ("VD89", "Dependency cycle detected")
@@ -313,7 +313,7 @@ feature {NONE} -- Syntax Errors
 	seed_more_type_errors
 			-- Additional type errors
 		local
-			e: KB_ERROR_INFO
+			l_e: KB_ERROR_INFO
 		do
 			-- VTUG: Invalid generic type usage
 			create e.make ("VTUG", "Type used as generic is not valid")
@@ -329,9 +329,9 @@ feature {NONE} -- Syntax Errors
 			e.set_explanation ("An object test local is used outside its valid scope.")
 			e.add_cause ("Using 'attached x as y' variable y outside the then-branch")
 			e.add_cause ("Object test local used in else branch")
-			e.add_fix ("Keep in scope", "Only use object test local in its then-branch", "if attached x as lx then%N  lx.use%Nend")
-			e.set_bad_code ("if attached x as lx then%N  -- ok here%Nend%Nlx.use -- ERROR: out of scope!")
-			e.set_good_code ("if attached x as lx then%N  lx.use -- Only here!%Nend")
+			e.add_fix ("Keep in scope", "Only use object test local in its then-branch", "if attached x as al_lx then%N  lx.use%Nend")
+			e.set_bad_code ("if attached x as al_lx then%N  -- ok here%Nend%Nlx.use -- ERROR: out of scope!")
+			e.set_good_code ("if attached x as al_lx then%N  al_lx.use -- Only here!%Nend")
 			e.set_ecma_section ("8.24.7")
 			db.add_error (e)
 
@@ -355,7 +355,7 @@ feature {NONE} -- Syntax Errors
 	seed_syntax_errors
 			-- Common syntax mistakes
 		local
-			e: KB_ERROR_INFO
+			l_e: KB_ERROR_INFO
 		do
 			-- Syntax: Missing 'then'
 			create e.make ("SYNT_THEN", "Syntax: Missing 'then' after condition")

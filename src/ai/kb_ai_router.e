@@ -106,7 +106,7 @@ feature -- 4-Phase AI Cascade
 				Result := process_direct (a_query)
 				Result.set_ai_note ("Could not initialize AI client")
 			else
-				if attached ai_config.active_provider as p then
+				if attached ai_config.active_provider as al_p then
 					Result.set_ai_provider (p)
 				end
 				l_keywords := extract_keywords (l_client, a_query)
@@ -152,7 +152,7 @@ feature {NONE} -- Phase 1: Keywords
 				end
 			else
 				last_raw_response := Void
-				if debug_mode and attached l_response.error_message as e then
+				if debug_mode and attached l_response.error_message as al_e then
 					io.put_string ("  [DEBUG] AI error: " + e.out + "%N")
 				end
 				create Result.make_empty
@@ -265,8 +265,8 @@ feature {NONE} -- Phase 4: Raw KB RAG
 					faq_store.store_faq (l_new_faq)
 					Result.set_ai_note ("New FAQ #" + l_new_faq.id.out)
 				else
-					if attached l_response.error_message as e then
-						Result.set_ai_note ("Synthesis failed: " + e.out)
+					if attached l_response.error_message as al_e then
+						Result.set_ai_note ("Synthesis failed: " + al_e.out)
 					end
 				end
 			else
@@ -290,15 +290,15 @@ feature {NONE} -- AI Client
 
 	create_ai_client: detachable AI_CLIENT
 		do
-			if attached ai_config.active_provider as p then
-				if p.same_string ("claude") then
-					if attached ai_config.provider_api_key ("claude") as k then
+			if attached ai_config.active_provider as al_p then
+				if al_p.same_string ("claude") then
+					if attached ai_config.provider_api_key ("claude") as al_k then
 						create {CLAUDE_CLIENT} Result.make_with_api_key (k)
 					end
 				elseif p.same_string ("ollama") then
 					create {OLLAMA_CLIENT} Result.make
 				elseif p.same_string ("grok") then
-					if attached ai_config.provider_api_key ("grok") as k then
+					if attached ai_config.provider_api_key ("grok") as al_k then
 						create {GROK_CLIENT} Result.make_with_api_key (k)
 					end
 				end

@@ -261,7 +261,7 @@ feature {NONE} -- Implementation
 	safe_string (a_value: detachable STRING_32): STRING_32
 			-- Return value or empty string if void
 		do
-			if attached a_value as v then
+			if attached a_value as al_v then
 				Result := v
 			else
 				create Result.make_empty
@@ -278,12 +278,12 @@ feature {NONE} -- Implementation
 				l_content := j.substring (2, j.count - 1)
 				l_items := l_content.split (',')
 				across l_items as item loop
-					if attached item as i then
-						i.left_adjust
-						i.right_adjust
-						if i.count > 2 and then i.item (1) = '"' then
-							Result.extend (i.substring (2, i.count - 1))
-						elseif not i.is_empty then
+					if attached item as al_i then
+						al_i.left_adjust
+						al_i.right_adjust
+						if al_i.count > 2 and then al_i.item (1) = '"' then
+							Result.extend (al_i.substring (2, al_i.count - 1))
+						elseif not al_i.is_empty then
 							Result.extend (i)
 						end
 					end

@@ -42,8 +42,8 @@ feature {NONE} -- Initialization
 			content_id := safe_string (a_row.item (2))
 			title := safe_string (a_row.item (3))
 			snippet := safe_string (a_row.item (4))
-			if attached a_row.item (5) as val then
-				rank := val.out.to_real_64
+			if attached a_row.item (5) as al_val then
+				rank := al_val.out.to_real_64
 			end
 		end
 
@@ -107,8 +107,8 @@ feature {NONE} -- Implementation
 	safe_string (a_val: detachable ANY): STRING_32
 			-- Convert value to string safely
 		do
-			if attached a_val as v then
-				Result := v.out
+			if attached a_val as al_v then
+				Result := al_v.out
 			else
 				create Result.make_empty
 			end

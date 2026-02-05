@@ -39,8 +39,8 @@ feature {NONE} -- Initialization
 		require
 			row_not_void: a_row /= Void
 		do
-			if attached a_row.item (1) as val then
-				id := val.out.to_integer
+			if attached a_row.item (1) as al_val then
+				id := al_val.out.to_integer
 			end
 			name := a_row.string_value ("name")
 			description := a_row.string_value ("description")

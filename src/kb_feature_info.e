@@ -40,8 +40,8 @@ feature {NONE} -- Initialization
 		require
 			row_not_void: a_row /= Void
 		do
-			if attached a_row.item (1) as val then
-				id := val.out.to_integer
+			if attached a_row.item (1) as al_val then
+				id := al_val.out.to_integer
 			end
 			class_id := a_row.integer_value ("class_id")
 			name := a_row.string_value ("name")
@@ -327,7 +327,7 @@ feature {NONE} -- Parsing
 	safe_string (a_val: detachable STRING_32): STRING_32
 			-- Convert detachable to attached string
 		do
-			if attached a_val as v then
+			if attached a_val as al_v then
 				Result := v
 			else
 				create Result.make_empty

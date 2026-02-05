@@ -98,7 +98,7 @@ feature {NONE} -- Threading
 				l_thread_id := get_thread_id (msg)
 
 				if threads.has (l_thread_id) then
-					if attached threads.item (l_thread_id) as l_existing then l_existing.extend (msg) end
+					if attached threads.item (l_thread_id) as al_l_existing then l_existing.extend (msg) end
 				else
 					create l_thread.make (5)
 					l_thread.extend (msg)
@@ -143,7 +143,7 @@ feature {NONE} -- Q&A Extraction
 					end
 				end
 
-				if attached l_question as q then
+				if attached l_question as al_q then
 					across thread as msg loop
 						if msg.is_reply then
 							l_answer_score := score_answer (msg)

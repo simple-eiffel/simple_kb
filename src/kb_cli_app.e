@@ -200,8 +200,8 @@ feature -- Commands
 			l_faq_store: KB_FAQ_STORE
 			l_ingester: KB_MBOX_INGESTER
 		do
-			if attached db as l_db then
-				create l_faq_store.make (l_db.db)
+			if attached db as al_l_db then
+				create l_faq_store.make (al_l_db.db)
 				create l_ingester.make (l_faq_store)
 				io.put_string ("Importing mbox: " + a_path.out + "%N")
 				l_ingester.import_file (a_path, True)
@@ -280,8 +280,8 @@ feature -- AI Commands
 			-- Show AI configuration status
 		do
 			ensure_ai_config
-			if attached ai_config as cfg then
-				io.put_string (cfg.status_report)
+			if attached ai_config as al_cfg then
+				io.put_string (al_cfg.status_report)
 			end
 		end
 
@@ -328,11 +328,11 @@ feature -- AI Commands
 			-- Enable AI-assisted mode
 		do
 			ensure_ai_config
-			if attached ai_config as cfg then
-				if cfg.has_ai_configured then
-					cfg.enable_ai
+			if attached ai_config as al_cfg then
+				if al_cfg.has_ai_configured then
+					al_cfg.enable_ai
 					io.put_string ("AI mode ENABLED%N")
-					if attached cfg.active_provider as prov then
+					if attached al_cfg.active_provider as al_prov then
 						io.put_string ("Using provider: " + prov.out + "%N")
 					end
 				else
@@ -346,8 +346,8 @@ feature -- AI Commands
 			-- Disable AI mode
 		do
 			ensure_ai_config
-			if attached ai_config as cfg then
-				cfg.disable_ai
+			if attached ai_config as al_cfg then
+				al_cfg.disable_ai
 			end
 			io.put_string ("AI mode DISABLED (using FTS5 only)%N")
 		end
@@ -356,14 +356,14 @@ feature -- AI Commands
 			-- Switch active AI provider
 		do
 			ensure_ai_config
-			if attached ai_config as cfg then
-				if cfg.has_provider (a_name) then
-					cfg.set_provider (a_name)
+			if attached ai_config as al_cfg then
+				if al_cfg.has_provider (a_name) then
+					al_cfg.set_provider (a_name)
 					io.put_string ("Switched to provider: " + a_name.out + "%N")
 				else
 					io.put_string ("Provider not available: " + a_name.out + "%N")
 					io.put_string ("Configured providers: ")
-					across cfg.available_providers as prov loop
+					across al_cfg.available_providers as prov loop
 						io.put_string (prov.out + " ")
 					end
 					io.put_string ("%N")
@@ -440,13 +440,13 @@ feature -- AI Commands
 			l_result: KB_QUERY_RESULT
 		do
 			ensure_ai_config
-			if attached ai_config as cfg then
+			if attached ai_config as al_cfg then
 				create l_router.make (db, cfg)
 				l_router.set_debug (ai_debug_mode)
 				
 				if l_router.is_ai_available then
 					io.put_string ("Querying with AI (")
-					if attached cfg.active_provider as prov then
+					if attached al_cfg.active_provider as al_prov then
 						io.put_string (prov.out)
 					end
 					io.put_string (")...%N%N")
@@ -469,8 +469,8 @@ feature -- Error Commands
 			l_error: detachable KB_ERROR_INFO
 		do
 			l_error := db.get_error (a_code)
-			if attached l_error as err then
-				io.put_string (err.formatted.out)
+			if attached l_error as al_err then
+				io.put_string (al_err.formatted.out)
 				io.put_string ("%N")
 			else
 				io.put_string ("Error code not found: " + a_code.out + "%N%N")
@@ -541,8 +541,8 @@ feature -- Pattern Commands
 			l_pattern: detachable KB_PATTERN
 		do
 			l_pattern := db.get_pattern (a_name)
-			if attached l_pattern as pat then
-				io.put_string (pat.formatted.out)
+			if attached l_pattern as al_pat then
+				io.put_string (al_pat.formatted.out)
 				io.put_string ("%N")
 			else
 				io.put_string ("Pattern not found: " + a_name.out + "%N%N")
@@ -617,14 +617,14 @@ feature -- Example Commands
 			l_example: detachable KB_EXAMPLE
 		do
 			l_example := db.get_example (a_title)
-			if attached l_example as ex then
-				io.put_string (ex.formatted.out)
+			if attached l_example as al_ex then
+				io.put_string (al_ex.formatted.out)
 				io.put_string ("%N")
 			else
 				-- Try partial match
 				l_example := db.find_example_like (a_title)
-				if attached l_example as ex then
-					io.put_string (ex.formatted.out)
+				if attached l_example as al_ex then
+					io.put_string (al_ex.formatted.out)
 					io.put_string ("%N")
 				else
 					io.put_string ("Example not found: " + a_title.out + "%N%N")
@@ -677,7 +677,7 @@ feature -- Feature Commands
 			l_choice: INTEGER
 		do
 			l_feature := db.find_feature (a_class_name, a_feature_name)
-			if attached l_feature as feat then
+			if attached l_feature as al_feat then
 				show_feature_details (a_class_name, feat)
 			else
 				-- Try partial match
@@ -719,16 +719,16 @@ feature -- Feature Commands
 			l_choice: INTEGER
 		do
 			l_class := db.find_class (a_class_name)
-			if attached l_class as cls then
-				if cls.features.is_empty then
+			if attached l_class as al_cls then
+				if al_cls.features.is_empty then
 					io.put_string ("No features found for class: " + a_class_name.out + "%N")
 				else
-					io.put_string ("Features in " + cls.name.out + " (" + cls.features.count.out + "):%N")
+					io.put_string ("Features in " + al_cls.name.out + " (" + al_cls.features.count.out + "):%N")
 					io.put_string ("========================================%N%N")
-					from i := 1 until i > cls.features.count loop
-						io.put_string ("#" + i.out + " " + cls.features[i].kind.out + " " + cls.features[i].name.out)
-						if not cls.features[i].signature.is_empty then
-							io.put_string (" " + cls.features[i].signature.out)
+					from i := 1 until i > al_cls.features.count loop
+						io.put_string ("#" + i.out + " " + al_cls.features[i].kind.out + " " + al_cls.features[i].name.out)
+						if not al_cls.features[i].signature.is_empty then
+							io.put_string (" " + al_cls.features[i].signature.out)
 						end
 						io.put_string ("%N")
 						i := i + 1
@@ -819,8 +819,8 @@ feature -- Library Commands
 			l_choice: INTEGER
 		do
 			l_lib := db.get_library (a_name)
-			if attached l_lib as lib then
-				io.put_string (lib.formatted.out)
+			if attached l_lib as al_lib then
+				io.put_string (al_lib.formatted.out)
 				io.put_string ("%N")
 			else
 				-- Try partial match
@@ -972,7 +972,7 @@ feature -- Search Commands
 			l_choice: INTEGER
 		do
 			l_class := db.find_class (a_name)
-			if attached l_class as cls then
+			if attached l_class as al_cls then
 				show_class_details (cls)
 			else
 				-- Try partial match
@@ -1863,9 +1863,9 @@ feature {NONE} -- Implementation
 			l_args: ARGUMENTS_32
 		once
 			create l_args
-			if attached l_args.command_name as cmd then
+			if attached l_args.command_name as al_cmd then
 				create l_path.make_from_string (cmd)
-				if attached l_path.parent as parent_dir then
+				if attached l_path.parent as al_parent_dir then
 					l_path := parent_dir.extended ("kb.db")
 					Result := l_path.out
 				else

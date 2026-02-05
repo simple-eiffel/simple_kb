@@ -56,7 +56,7 @@ feature -- Access
 			l_env: EXECUTION_ENVIRONMENT
 		once
 			create l_env
-			if attached l_env.item ("SIMPLE_EIFFEL") as path then
+			if attached l_env.item ("SIMPLE_EIFFEL") as al_path then
 				Result := path + "/simple_kb/kb.db"
 			else
 				Result := "kb.db"
@@ -98,8 +98,8 @@ feature -- Error Lookup
 			l_error: detachable KB_ERROR_INFO
 		do
 			l_error := error (a_code)
-			if attached l_error as err then
-				io.put_string (err.formatted.to_string_8)
+			if attached l_error as al_err then
+				io.put_string (al_err.formatted.to_string_8)
 			else
 				io.put_string ("Error code not found: ")
 				io.put_string (a_code.to_string_8)
@@ -123,8 +123,8 @@ feature -- Class Lookup
 			l_class: detachable KB_CLASS_INFO
 		do
 			l_class := class_info (a_name)
-			if attached l_class as cls then
-				io.put_string (cls.formatted.to_string_8)
+			if attached l_class as al_cls then
+				io.put_string (al_cls.formatted.to_string_8)
 			else
 				io.put_string ("Class not found: ")
 				io.put_string (a_name.to_string_8)
@@ -156,8 +156,8 @@ feature -- Example Lookup
 			l_example: detachable KB_EXAMPLE
 		do
 			l_example := example (a_title)
-			if attached l_example as ex then
-				io.put_string (ex.formatted.to_string_8)
+			if attached l_example as al_ex then
+				io.put_string (al_ex.formatted.to_string_8)
 			else
 				io.put_string ("Example not found: ")
 				io.put_string (a_title.to_string_8)
@@ -181,8 +181,8 @@ feature -- Pattern Lookup
 			l_pattern: detachable KB_PATTERN
 		do
 			l_pattern := pattern (a_name)
-			if attached l_pattern as pat then
-				io.put_string (pat.formatted.to_string_8)
+			if attached l_pattern as al_pat then
+				io.put_string (al_pat.formatted.to_string_8)
 			else
 				io.put_string ("Pattern not found: ")
 				io.put_string (a_name.to_string_8)
@@ -203,7 +203,7 @@ feature -- Statistics
 	print_stats
 			-- Print statistics to stdout
 		local
-			s: like stats
+			l_s: like stats
 		do
 			s := stats
 			io.put_string ("Knowledge Base Statistics%N")

@@ -123,7 +123,7 @@ feature -- Logging
 	get_logger: SIMPLE_LOGGER
 			-- Get or create logger
 		do
-			if attached logger as l then
+			if attached logger as al_l then
 				Result := l
 			else
 				create Result.make_to_file (log_file_path)
@@ -552,7 +552,7 @@ feature -- Ingestion
 				end
 
 				-- Get library directory (parent of ECF file)
-				if attached ecf.parent as parent_path then
+				if attached ecf.parent as al_parent_path then
 					l_lib_dir := parent_path
 				else
 					create l_lib_dir.make_from_string (a_base_path.out)
@@ -701,16 +701,16 @@ feature -- Ingestion
 			create l_xml.make
 			l_xml_doc := l_xml.parse (a_content)
 			
-			if attached l_xml_doc.root as root then
+			if attached l_xml_doc.root as al_root then
 				-- ECF root is <system>
 				-- UUID
-				if attached root.attr ("uuid") as uuid then
+				if attached al_root.attr ("uuid") as al_uuid then
 					Result.set_uuid (uuid)
 				end
 				
 				-- Description
-				if attached root.element ("description") as desc_el then
-					if attached desc_el.text as txt then
+				if attached root.element ("description") as al_desc_el then
+					if attached al_desc_el.text as al_txt then
 						Result.set_description (txt)
 					end
 				end
@@ -724,7 +724,7 @@ feature -- Ingestion
 					l_clusters := l_tgt.elements ("cluster")
 					from j := 1 until j > l_clusters.count loop
 						l_el := l_clusters [j]
-						if attached l_el.attr ("name") as cl_name then
+						if attached l_el.attr ("name") as al_cl_name then
 							Result.add_cluster (cl_name)
 						end
 						j := j + 1
@@ -734,7 +734,7 @@ feature -- Ingestion
 					l_libs := l_tgt.elements ("library")
 					from j := 1 until j > l_libs.count loop
 						l_el := l_libs [j]
-						if attached l_el.attr ("name") as lib_name then
+						if attached l_el.attr ("name") as al_lib_name then
 							Result.add_dependency (lib_name)
 						end
 						j := j + 1
@@ -1010,8 +1010,8 @@ feature {NONE} -- Implementation
 	safe_string (a_str: detachable READABLE_STRING_GENERAL): STRING_32
 			-- Convert string safely, returning empty string for Void
 		do
-			if attached a_str as s then
-				Result := s.to_string_32
+			if attached a_str as al_s then
+				Result := al_s.to_string_32
 			else
 				create Result.make_empty
 			end

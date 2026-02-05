@@ -364,7 +364,7 @@ feature {NONE} -- Parsing
 	safe_string (a_val: detachable STRING_32): STRING_32
 			-- Convert detachable to attached string
 		do
-			if attached a_val as v then
+			if attached a_val as al_v then
 				Result := v
 			else
 				create Result.make_empty

@@ -65,13 +65,13 @@ feature -- Parsing
 
 					if l_line.starts_with ("From ") and then is_mbox_from_line (l_line) then
 						-- New message starts
-						if attached l_current_msg as msg then
+						if attached l_current_msg as al_msg then
 							finalize_message (msg)
 							messages.extend (msg)
 						end
 						create l_current_msg.make
 						l_in_headers := True
-					elseif attached l_current_msg as msg then
+					elseif attached l_current_msg as al_msg then
 						if l_in_headers then
 							if l_line.is_empty then
 								l_in_headers := False
@@ -87,7 +87,7 @@ feature -- Parsing
 					l_file.read_line
 				end
 				-- Don't forget last message
-				if attached l_current_msg as msg then
+				if attached l_current_msg as al_msg then
 					finalize_message (msg)
 					messages.extend (msg)
 				end

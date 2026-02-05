@@ -89,9 +89,9 @@ feature -- Access
 			create l_env
 			-- Get executable directory
 			create l_path.make_from_string (l_env.current_working_path.out)
-			if attached {ARGUMENTS_32}.command_name as cmd then
+			if attached {ARGUMENTS_32}.command_name as al_cmd then
 				create l_path.make_from_string (cmd)
-				if attached l_path.parent as parent_dir then
+				if attached l_path.parent as al_parent_dir then
 					l_path := parent_dir.extended ("kb.db")
 					Result := l_path.out
 				else
@@ -132,8 +132,8 @@ feature -- Status
 		do
 			l_result := db.query ("PRAGMA compile_options")
 			across l_result.rows as row loop
-				if attached row.item (1) as val then
-					l_str := val.out.to_string_32
+				if attached row.item (1) as al_val then
+					l_str := al_val.out.to_string_32
 					l_str.to_upper
 					if l_str.has_substring ("FTS5") then
 						Result := True
@@ -575,8 +575,8 @@ feature -- Feature Operations
 				<<a_class_name.to_string_32>>
 			)
 			if not l_result.is_empty then
-				if attached l_result.rows.first.item (1) as val then
-					l_class_id := val.out.to_integer
+				if attached l_result.rows.first.item (1) as al_val then
+					l_class_id := al_val.out.to_integer
 				end
 				-- Now find the feature
 				l_result := db.query_with_args (
@@ -607,8 +607,8 @@ feature -- Feature Operations
 				<<a_class_name.to_string_32>>
 			)
 			if not l_result.is_empty then
-				if attached l_result.rows.first.item (1) as val then
-					l_class_id := val.out.to_integer
+				if attached l_result.rows.first.item (1) as al_val then
+					l_class_id := al_val.out.to_integer
 				end
 				l_pattern := "%%" + a_query.out.as_lower + "%%"
 				l_result := db.query_with_args (
@@ -888,8 +888,8 @@ feature -- Statistics
 		do
 			l_result := db.query (a_sql)
 			if not l_result.is_empty then
-				if attached l_result.rows.first as first_row then
-					if attached first_row.item (1) as val then
+				if attached l_result.rows.first as al_first_row then
+					if attached al_first_row.item (1) as al_val then
 						Result := val.out.to_integer
 					end
 				end
@@ -1136,8 +1136,8 @@ feature -- Clear Operations
 					if not l_class_ids.is_empty then
 						l_class_ids.append (",")
 					end
-					if attached row.item (1) as id then
-						l_class_ids.append (id.out)
+					if attached row.item (1) as al_id then
+						l_class_ids.append (al_id.out)
 					end
 				end
 				
@@ -1237,8 +1237,8 @@ feature {NONE} -- Parent Operations
 				<<a_class.id>>
 			)
 			across l_result.rows as row loop
-				if attached row.item (1) as val then
-					a_class.add_parent (val.out)
+				if attached row.item (1) as al_val then
+					a_class.add_parent (al_val.out)
 				end
 			end
 		end
@@ -1272,8 +1272,8 @@ feature -- Ancestry Queries
 				]", <<l_parent>>)
 				
 				across l_result.rows as row loop
-					if attached row.item (1) as val then
-						l_parent := val.out.to_string_32.as_upper
+					if attached row.item (1) as al_val then
+						l_parent := al_val.out.to_string_32.as_upper
 						if not Result.has (l_parent) then
 							Result.extend (l_parent)
 							l_to_check.extend (l_parent)
@@ -1310,8 +1310,8 @@ feature -- Ancestry Queries
 				]", <<l_child>>)
 				
 				across l_result.rows as row loop
-					if attached row.item (1) as val then
-						l_child := val.out.to_string_32.as_upper
+					if attached row.item (1) as al_val then
+						l_child := al_val.out.to_string_32.as_upper
 						if not Result.has (l_child) then
 							Result.extend (l_child)
 							l_to_check.extend (l_child)
@@ -1336,8 +1336,8 @@ feature -- Ancestry Queries
 			]", <<a_class_name.to_string_32.as_upper>>)
 			
 			across l_result.rows as row loop
-				if attached row.item (1) as val then
-					Result.extend (val.out.to_string_32)
+				if attached row.item (1) as al_val then
+					Result.extend (al_val.out.to_string_32)
 				end
 			end
 		end
@@ -1357,8 +1357,8 @@ feature -- Ancestry Queries
 			]", <<a_class_name.to_string_32.as_upper>>)
 			
 			across l_result.rows as row loop
-				if attached row.item (1) as val then
-					Result.extend (val.out.to_string_32)
+				if attached row.item (1) as al_val then
+					Result.extend (al_val.out.to_string_32)
 				end
 			end
 		end

@@ -275,8 +275,8 @@ feature -- Configuration Persistence
 			else
 				l_file.put_string ("enabled = false%N")
 			end
-			if attached active_provider as ap then
-				l_file.put_string ("provider = %"" + ap.out + "%"%N")
+			if attached active_provider as al_ap then
+				l_file.put_string ("provider = %"" + al_ap.out + "%"%N")
 			end
 			l_file.close
 		rescue
@@ -293,8 +293,8 @@ feature -- Configuration Persistence
 			create l_args
 			create l_exe_path.make_from_string (l_args.command_name)
 			l_parent := l_exe_path.parent
-			if attached l_parent as p then
-				Result := p.extended ("kb.toml").name
+			if attached l_parent as al_p then
+				Result := al_p.extended ("kb.toml").name
 			else
 				Result := {STRING_32} "kb.toml"
 			end
@@ -390,8 +390,8 @@ feature {NONE} -- Provider Detection Implementation
 	env_var (a_name: READABLE_STRING_GENERAL): detachable STRING_32
 			-- Get environment variable value
 		do
-			if attached execution_environment.item (a_name.out) as val then
-				Result := val.to_string_32
+			if attached execution_environment.item (a_name.out) as al_val then
+				Result := al_val.to_string_32
 			end
 		end
 

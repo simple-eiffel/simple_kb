@@ -714,15 +714,15 @@ end
 		do
 			create l_pattern.make ("attachment_check", "[
 -- Pattern 1: check attached with alias
-if attached find_user (email) as user then
+if attached find_user (email) as al_user then
 	-- user is attached (non-void) in this scope
-	print (user.name)
+	print (al_user.name)
 end
 
 -- Pattern 2: Object test
-if attached {DATABASE_ERROR} last_error as db_err then
+if attached {DATABASE_ERROR} last_error as al_db_err then
 	-- Type narrowing: db_err is DATABASE_ERROR
-	print (db_err.sql_code.out)
+	print (al_db_err.sql_code.out)
 end
 
 -- Pattern 3: Detachable to attached conversion
@@ -740,7 +740,7 @@ get_or_default (a_key: STRING): VALUE
 
 -- Pattern 4: Certified Attachment Pattern (CAP)
 -- When you KNOW it's attached but compiler doesn't:
-check attached my_detachable as x then
+check attached my_detachable as al_x then
 	-- x is attached here
 	-- Runtime check in debug, assertion in production
 end
