@@ -568,14 +568,14 @@ feature -- Initialization
 
 feature -- Operations
 
-	distance (other: POINT): REAL_64
+	distance (a_other: POINT): REAL_64
 		do
-			Result := ((x - other.x)^2 + (y - other.y)^2).sqrt
+			Result := ((x - a_other.x)^2 + (y - a_other.y)^2).sqrt
 		end
 
-	plus alias "+" (other: POINT): POINT
+	plus alias "+" (a_other: POINT): POINT
 		do
-			Result.make (x + other.x, y + other.y)
+			Result.make (x + a_other.x, y + a_other.y)
 		end
 
 invariant
@@ -629,8 +629,8 @@ task.execute_async (
 	agent do
 		-- work here
 	end,
-	agent (success: BOOLEAN) do
-		if success then print ("Done!") end
+	agent (a_success: BOOLEAN) do
+		if a_success then print ("Done!") end
 	end
 )
 

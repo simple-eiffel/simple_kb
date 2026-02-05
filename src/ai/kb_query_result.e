@@ -209,10 +209,10 @@ feature -- Display
 
 feature {NONE} -- Helpers
 
-	sanitize_for_console (s: STRING_32): STRING_32
+	sanitize_for_console (a_s: STRING_32): STRING_32
 			-- Replace problematic Unicode characters with ASCII equivalents
 		do
-			Result := s.twin
+			Result := a_s.twin
 			Result.replace_substring_all ({STRING_32} "→", {STRING_32} "->")
 			Result.replace_substring_all ({STRING_32} "←", {STRING_32} "<-")
 			Result.replace_substring_all ({STRING_32} "∘", {STRING_32} "o")
