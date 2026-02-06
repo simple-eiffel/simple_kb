@@ -328,7 +328,7 @@ feature {NONE} -- Parsing
 			-- Convert detachable to attached string
 		do
 			if attached a_val as al_v then
-				Result := v
+				Result := al_v
 			else
 				create Result.make_empty
 			end

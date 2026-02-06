@@ -5,7 +5,7 @@ note
 		Processes mbox files to extract Q&A pairs:
 		1. Parse mbox file into messages
 		2. Group messages into threads (via In-Reply-To/References)
-		3. Identify question/answer pairs
+		3. Identify l_question/answer pairs
 		4. Store as FAQs in the knowledge base
 	]"
 	author: "Simple Eiffel"
@@ -132,19 +132,19 @@ feature {NONE} -- Q&A Extraction
 		do
 			create Result.make (threads.count)
 
-			across threads as thread loop
+			across threads as l_thread loop
 				l_question := Void
 				l_best_answer := Void
 				l_best_score := 0
 
-				across thread as msg loop
+				across l_thread as msg loop
 					if l_question = Void and then msg.is_question and then not msg.is_reply then
 						l_question := msg
 					end
 				end
 
 				if attached l_question as al_q then
-					across thread as msg loop
+					across l_thread as msg loop
 						if msg.is_reply then
 							l_answer_score := score_answer (msg)
 							if l_answer_score > l_best_score then
@@ -236,14 +236,14 @@ feature {NONE} -- Storage
 			end
 		end
 
-	remove_quoted_text (a_text: STRING_32)
+	remove_quoted_text (l_a_text: STRING_32)
 			-- Remove lines starting with > (quoted text)
 		local
 			l_lines: LIST [STRING_32]
 			l_result: STRING_32
 		do
-			l_lines := a_text.split ('%N')
-			create l_result.make (a_text.count)
+			l_lines := l_a_text.split ('%N')
+			create l_result.make (l_a_text.count)
 			across l_lines as line loop
 				line.left_adjust
 				if not line.starts_with (">") and not line.starts_with ("On ") then
@@ -251,11 +251,11 @@ feature {NONE} -- Storage
 					l_result.append ("%N")
 				end
 			end
-			a_text.wipe_out
-			a_text.append (l_result)
+			l_a_text.wipe_out
+			l_a_text.append (l_result)
 		end
 
-	extract_keywords (a_text: STRING_32): STRING_32
+	extract_keywords (l_a_text: STRING_32): STRING_32
 			-- Extract keywords from text
 		local
 			l_words: LIST [STRING_32]
@@ -264,7 +264,7 @@ feature {NONE} -- Storage
 		do
 			create Result.make (100)
 			create l_seen.make (20)
-			l_words := a_text.as_lower.split (' ')
+			l_words := l_a_text.as_lower.split (' ')
 
 			across l_words as w loop
 				l_word := w.twin

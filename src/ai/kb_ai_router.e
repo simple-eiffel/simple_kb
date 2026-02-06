@@ -2,9 +2,9 @@ note
 	description: "[
 		KB_AI_ROUTER - 4-Phase RAG Query Router
 
-		Phase 1: AI extracts keywords + tags
+		Phase 1: AI extracts l_keywords + l_tags
 		Phase 2: Search FAQ cache
-		Phase 3: If FAQs found -> synthesize from FAQ context
+		Phase 3: If FAQs found -> synthesize from FAQ l_context
 		Phase 4: If no FAQs -> Raw KB RAG + store as new FAQ
 	]"
 	author: "Simple Eiffel"

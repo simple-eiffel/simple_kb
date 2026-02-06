@@ -3,9 +3,9 @@ note
 		KB_MBOX_PARSER - Parse Mbox Email Archives
 		
 		Parses standard mbox format (RFC 4155) where:
-		- Messages start with 'From ' at line beginning
-		- Headers follow until blank line
-		- Body continues until next 'From ' line
+		- Messages start with 'From ' at l_line beginning
+		- Headers follow until blank l_line
+		- Body continues until next 'From ' l_line
 		
 		Google Takeout exports Groups data in mbox format.
 	]"

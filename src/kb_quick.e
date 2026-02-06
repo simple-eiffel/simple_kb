@@ -57,7 +57,7 @@ feature -- Access
 		once
 			create l_env
 			if attached l_env.item ("SIMPLE_EIFFEL") as al_path then
-				Result := path + "/simple_kb/kb.db"
+				Result := al_path + "/simple_kb/kb.db"
 			else
 				Result := "kb.db"
 			end
@@ -205,14 +205,14 @@ feature -- Statistics
 		local
 			l_s: like stats
 		do
-			s := stats
+			l_s := stats
 			io.put_string ("Knowledge Base Statistics%N")
 			io.put_string ("=========================%N")
-			io.put_string ("Classes:  " + s.classes.out + "%N")
-			io.put_string ("Features: " + s.features.out + "%N")
-			io.put_string ("Examples: " + s.examples.out + "%N")
-			io.put_string ("Errors:   " + s.errors.out + "%N")
-			io.put_string ("Patterns: " + s.patterns.out + "%N")
+			io.put_string ("Classes:  " + l_s.classes.out + "%N")
+			io.put_string ("Features: " + l_s.features.out + "%N")
+			io.put_string ("Examples: " + l_s.examples.out + "%N")
+			io.put_string ("Errors:   " + l_s.errors.out + "%N")
+			io.put_string ("Patterns: " + l_s.patterns.out + "%N")
 		end
 
 feature -- Cleanup

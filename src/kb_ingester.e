@@ -124,7 +124,7 @@ feature -- Logging
 			-- Get or create logger
 		do
 			if attached logger as al_l then
-				Result := l
+				Result := al_l
 			else
 				create Result.make_to_file (log_file_path)
 				Result.set_level (Result.Level_debug)
@@ -454,9 +454,9 @@ feature -- Ingestion
 			io.put_string ("Found " + l_total.out + " simple_* libraries to process%N%N")
 
 			-- Second pass: index each library
-			across l_libs as lib loop
+			across l_libs as l_lib loop
 				l_current := l_current + 1
-				l_lib_name := lib
+				l_lib_name := l_lib
 
 				-- Track counts before processing
 				l_classes_before := classes_indexed
@@ -553,7 +553,7 @@ feature -- Ingestion
 
 				-- Get library directory (parent of ECF file)
 				if attached ecf.parent as al_parent_path then
-					l_lib_dir := parent_path
+					l_lib_dir := al_parent_path
 				else
 					create l_lib_dir.make_from_string (a_base_path.out)
 				end
@@ -705,18 +705,18 @@ feature -- Ingestion
 				-- ECF root is <system>
 				-- UUID
 				if attached al_root.attr ("uuid") as al_uuid then
-					Result.set_uuid (uuid)
+					Result.set_uuid (al_uuid)
 				end
 				
 				-- Description
-				if attached root.element ("description") as al_desc_el then
+				if attached al_root.element ("description") as al_desc_el then
 					if attached al_desc_el.text as al_txt then
-						Result.set_description (txt)
+						Result.set_description (al_txt)
 					end
 				end
 				
 				-- Find targets for clusters and dependencies
-				l_targets := root.elements ("target")
+				l_targets := al_root.elements ("target")
 				from i := 1 until i > l_targets.count loop
 					l_tgt := l_targets [i]
 					
@@ -725,7 +725,7 @@ feature -- Ingestion
 					from j := 1 until j > l_clusters.count loop
 						l_el := l_clusters [j]
 						if attached l_el.attr ("name") as al_cl_name then
-							Result.add_cluster (cl_name)
+							Result.add_cluster (al_cl_name)
 						end
 						j := j + 1
 					end
@@ -735,7 +735,7 @@ feature -- Ingestion
 					from j := 1 until j > l_libs.count loop
 						l_el := l_libs [j]
 						if attached l_el.attr ("name") as al_lib_name then
-							Result.add_dependency (lib_name)
+							Result.add_dependency (al_lib_name)
 						end
 						j := j + 1
 					end

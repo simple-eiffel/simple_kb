@@ -3,7 +3,7 @@ note
 		KB_ROSETTA_IMPORTER - Import Rosetta Code solutions as examples
 
 		Scans simple_rosetta/solutions/tier*/ directories and imports
-		each .e file as a KB_EXAMPLE with proper tags and tiers.
+		each .e l_file as a KB_EXAMPLE with proper tags and tiers.
 	]"
 	author: "Simple Eiffel"
 	date: "$Date$"

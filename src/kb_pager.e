@@ -2,15 +2,15 @@ note
 	description: "[
 		KB_PAGER - Paginated Output Handler
 
-		Shows long output N lines at a time with interactive continuation.
+		Shows long output N l_lines at a time with interactive continuation.
 
 		Usage:
 			pager: KB_PAGER
-			create pager.make (20)  -- 20 lines per page
+			create pager.make (20)  -- 20 l_lines per page
 			pager.show (long_text)
 
 		User interaction:
-			c/C/Enter = continue to next page
+			c/C/Enter = l_continue to next page
 			q/Q/blank line = stop and return
 	]"
 	author: "Simple Eiffel"

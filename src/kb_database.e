@@ -90,9 +90,9 @@ feature -- Access
 			-- Get executable directory
 			create l_path.make_from_string (l_env.current_working_path.out)
 			if attached {ARGUMENTS_32}.command_name as al_cmd then
-				create l_path.make_from_string (cmd)
+				create l_path.make_from_string (al_cmd)
 				if attached l_path.parent as al_parent_dir then
-					l_path := parent_dir.extended ("kb.db")
+					l_path := al_parent_dir.extended ("kb.db")
 					Result := l_path.out
 				else
 					Result := "kb.db"
@@ -890,7 +890,7 @@ feature -- Statistics
 			if not l_result.is_empty then
 				if attached l_result.rows.first as al_first_row then
 					if attached al_first_row.item (1) as al_val then
-						Result := val.out.to_integer
+						Result := al_val.out.to_integer
 					end
 				end
 			end

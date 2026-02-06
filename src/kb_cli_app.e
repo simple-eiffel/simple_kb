@@ -5,19 +5,19 @@ note
 		Main CLI application for querying the Eiffel knowledge base.
 
 		Commands:
-			kb search <query>   - Full-text search across all content
-			kb class <name>     - Show class details + features
-			kb error <code>     - Look up error code (e.g., kb error VEVI)
-			kb error list       - List all known error codes
-			kb ingest <path>    - Index source files from path
-			kb seed             - Populate database with known error codes
-			kb stats            - Show database statistics
+			kb search <l_query>   - Full-text search across all content
+			kb class <l_name>     - Show class details + features
+			kb l_error <l_code>     - Look up l_error l_code (e.g., kb l_error VEVI)
+			kb l_error list       - List all known l_error codes
+			kb ingest <l_path>    - Index source files from l_path
+			kb seed             - Populate database with known l_error codes
+			kb l_stats            - Show database statistics
 			kb help             - Show help
 
 		Usage:
 			> kb search json
 			[CLASS] SIMPLE_JSON - Parse and generate JSON
-			[ERROR] SEARCH1 - JSON parsing error
+			[ERROR] SEARCH1 - JSON parsing l_error
 			...
 	]"
 	author: "Simple Eiffel"
@@ -1364,10 +1364,10 @@ feature -- Clear Commands
 Clear Commands:
     kb clear all            Clear ALL data
     kb clear classes        Clear all indexed classes and features
-    kb clear library <name> Clear specific library (for re-ingesting)
+    kb clear library <l_name> Clear specific library (for re-ingesting)
     kb clear examples       Clear Rosetta Code examples
-    kb clear errors         Clear error codes
-    kb clear patterns       Clear design patterns
+    kb clear l_errors         Clear l_error codes
+    kb clear l_patterns       Clear design l_patterns
     kb clear help           Show this help
 ]")
 		end
@@ -1381,7 +1381,7 @@ Clear Commands:
 			io.put_string ("  - " + db.stats.examples.out + " examples%N")
 			io.put_string ("  - " + db.stats.errors.out + " errors%N")
 			io.put_string ("  - " + db.stats.patterns.out + " patterns%N%N")
-			if confirm ("Are you sure you want to delete ALL data?") then
+			if l_confirm ("Are you sure you want to delete ALL data?") then
 				db.clear_all
 				io.put_string ("All data cleared.%N")
 			else
@@ -1395,7 +1395,7 @@ Clear Commands:
 			io.put_string ("This will delete:%N")
 			io.put_string ("  - " + db.stats.classes.out + " classes%N")
 			io.put_string ("  - " + db.stats.features.out + " features%N%N")
-			if confirm ("Are you sure?") then
+			if l_confirm ("Are you sure?") then
 				db.clear_classes
 				io.put_string ("Classes and features cleared.%N")
 			else
@@ -1407,7 +1407,7 @@ Clear Commands:
 			-- Clear examples
 		do
 			io.put_string ("This will delete " + db.stats.examples.out + " examples.%N%N")
-			if confirm ("Are you sure?") then
+			if l_confirm ("Are you sure?") then
 				db.clear_examples
 				io.put_string ("Examples cleared.%N")
 			else
@@ -1419,7 +1419,7 @@ Clear Commands:
 			-- Clear error codes
 		do
 			io.put_string ("This will delete " + db.stats.errors.out + " error codes.%N%N")
-			if confirm ("Are you sure?") then
+			if l_confirm ("Are you sure?") then
 				db.clear_errors
 				io.put_string ("Error codes cleared.%N")
 			else
@@ -1431,7 +1431,7 @@ Clear Commands:
 			-- Clear patterns
 		do
 			io.put_string ("This will delete " + db.stats.patterns.out + " patterns.%N%N")
-			if confirm ("Are you sure?") then
+			if l_confirm ("Are you sure?") then
 				db.clear_patterns
 				io.put_string ("Patterns cleared.%N")
 			else
@@ -1459,7 +1459,7 @@ Clear Commands:
 				io.put_string ("No classes found for library: " + a_name.out + "%N")
 			else
 				io.put_string ("This will delete " + l_count.out + " classes from library '" + a_name.out + "'.%N%N")
-				if confirm ("Are you sure?") then
+				if l_confirm ("Are you sure?") then
 					db.clear_library (a_name)
 					io.put_string ("Library '" + a_name.out + "' cleared.%N")
 				else
@@ -1468,7 +1468,7 @@ Clear Commands:
 			end
 		end
 
-	confirm (a_prompt: STRING): BOOLEAN
+	l_confirm (a_prompt: STRING): BOOLEAN
 			-- Ask user for confirmation, return True if 'y' or 'yes'
 		local
 			l_input: STRING
@@ -1493,14 +1493,14 @@ USAGE:
     kb <command> [arguments]
 
 SEARCH COMMANDS:
-    ask <question>     AI-powered natural language query
-    search <query>     Full-text search across all content
-    class <name>       Show class details and features
-    feature <class>.<name>  Show feature with contracts
-    error <code>       Look up compiler error code
-    pattern <name>     Show Eiffel design pattern
-    example <title>    Show full Rosetta Code example
-    faq [query]        List or search cached FAQs
+    ask <question>     AI-powered natural language l_query
+    search <l_query>     Full-text search across all content
+    class <l_name>       Show class details and features
+    feature <class>.<l_name>  Show feature with contracts
+    l_error <l_code>       Look up compiler l_error l_code
+    l_pattern <l_name>     Show Eiffel design l_pattern
+    l_example <l_title>    Show full Rosetta Code l_example
+    faq [l_query]        List or search cached FAQs
 
 AI COMMANDS:
     ai                 Show AI configuration status
@@ -1508,33 +1508,33 @@ AI COMMANDS:
     ai setup           Show setup instructions
     ai on              Enable AI-assisted mode
     ai off             Disable AI (use direct search)
-    ai provider <name> Switch AI provider
+    ai provider <l_name> Switch AI provider
 
 ADMIN COMMANDS:
-    ingest <path>      Index source files from path
-    rosetta <path>     Import Rosetta Code examples
+    ingest <l_path>      Index source files from l_path
+    rosetta <l_path>     Import Rosetta Code examples
     mbox <file>        Import Q&A from mbox archive
-    seed               Populate error codes + patterns
-    stats              Show database statistics
-    clear <target>     Clear data (all|classes|examples|errors|patterns)
+    seed               Populate l_error codes + l_patterns
+    l_stats              Show database statistics
+    clear <l_target>     Clear data (all|classes|examples|l_errors|l_patterns)
     help               Show this help message
 
 EXAMPLES:
     kb search json                 # Search for 'json'
     kb class SIMPLE_HTTP           # Show class details
-    kb error VEVI                  # Look up VEVI error
-    kb pattern singleton           # Show singleton pattern
-    kb example "Sieve of Eratosthenes"  # Show full example
+    kb l_error VEVI                  # Look up VEVI l_error
+    kb l_pattern singleton           # Show singleton l_pattern
+    kb l_example "Sieve of Eratosthenes"  # Show full l_example
     kb feature SIMPLE_HTTP.get         # Show feature with contracts
-    kb pattern list                # List all patterns
+    kb l_pattern list                # List all l_patterns
     kb ingest /d/prod              # Index all simple_* libraries
     kb rosetta /d/prod/simple_rosetta  # Import Rosetta solutions
     kb seed                        # Initialize database
 
 NOTES:
-    - Run 'kb seed' to populate error codes and patterns
-    - Run 'kb ingest <path>' to index source files
-    - Run 'kb rosetta <path>' to import Rosetta examples
+    - Run 'kb seed' to populate l_error codes and l_patterns
+    - Run 'kb ingest <l_path>' to index source files
+    - Run 'kb rosetta <l_path>' to import Rosetta examples
     - Database is stored in kb.db
 
 ]")
@@ -1800,14 +1800,14 @@ Interactive Mode Commands
 =========================
 
 SEARCH COMMANDS:
-    ask <question>     AI-powered natural language query
-    search <query>     Full-text search across all content
-    class <name>       Show class details and features
-    feature <class>.<name>  Show feature with contracts
-    error <code>       Look up compiler error code
-    pattern <name>     Show Eiffel design pattern
-    example <title>    Show full Rosetta Code example
-    faq [query]        List or search cached FAQs
+    ask <question>     AI-powered natural language l_query
+    search <l_query>     Full-text search across all content
+    class <l_name>       Show class details and features
+    feature <class>.<l_name>  Show feature with contracts
+    l_error <l_code>       Look up compiler l_error l_code
+    l_pattern <l_name>     Show Eiffel design l_pattern
+    l_example <l_title>    Show full Rosetta Code l_example
+    faq [l_query]        List or search cached FAQs
 
 AI COMMANDS:
     ai                 Show AI configuration status
@@ -1815,26 +1815,26 @@ AI COMMANDS:
     ai setup           Show setup instructions
     ai on              Enable AI-assisted mode
     ai off             Disable AI (use direct search)
-    ai provider <name> Switch AI provider
+    ai provider <l_name> Switch AI provider
 
 ADMIN COMMANDS:
-    ingest <path>      Index source files from path
-    rosetta <path>     Import Rosetta Code examples
+    ingest <l_path>      Index source files from l_path
+    rosetta <l_path>     Import Rosetta Code examples
     mbox <file>        Import Q&A from mbox archive
-    seed               Populate error codes + patterns
-    stats              Show database statistics
-    clear <target>     Clear data (all|classes|examples|errors|patterns)
+    seed               Populate l_error codes + l_patterns
+    l_stats              Show database statistics
+    clear <l_target>     Clear data (all|classes|examples|l_errors|l_patterns)
     help               Show this help message
     quit               Exit interactive mode
 
 EXAMPLES:
     search json                    # Search for 'json'
     class SIMPLE_HTTP              # Show class details
-    error VEVI                     # Look up VEVI error
-    pattern singleton              # Show singleton pattern
-    example "Sieve of Eratosthenes"  # Show full example
+    l_error VEVI                     # Look up VEVI l_error
+    l_pattern singleton              # Show singleton l_pattern
+    l_example "Sieve of Eratosthenes"  # Show full l_example
     feature SIMPLE_HTTP.get        # Show feature with contracts
-    ask How do I parse JSON?       # AI-powered query
+    ask How do I parse JSON?       # AI-powered l_query
 
 ]")
 		end
@@ -1864,7 +1864,7 @@ feature {NONE} -- Implementation
 		once
 			create l_args
 			if attached l_args.command_name as al_cmd then
-				create l_path.make_from_string (cmd)
+				create l_path.make_from_string (l_cmd)
 				if attached l_path.parent as al_parent_dir then
 					l_path := parent_dir.extended ("kb.db")
 					Result := l_path.out
