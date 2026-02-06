@@ -4,3 +4,5 @@ EIFGENs/
 *.log
 data/
 bin/kb.exe
+*.melted
+*.epr
