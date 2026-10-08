@@ -262,7 +262,7 @@ feature {NONE} -- Implementation
 			-- Return value or empty string if void
 		do
 			if attached a_value as al_v then
-				Result := v
+				Result := al_v
 			else
 				create Result.make_empty
 			end
@@ -284,7 +284,7 @@ feature {NONE} -- Implementation
 						if al_i.count > 2 and then al_i.item (1) = '"' then
 							Result.extend (al_i.substring (2, al_i.count - 1))
 						elseif not al_i.is_empty then
-							Result.extend (i)
+							Result.extend (al_i)
 						end
 					end
 				end

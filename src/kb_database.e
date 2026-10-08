@@ -159,6 +159,46 @@ feature -- Schema
 			create_translations_table
 			create_fts5_index
 			create_faq_tables
+			ensure_unique_pattern_names
+		end
+
+	has_unique_pattern_names: BOOLEAN
+			-- Does the database enforce one `patterns' row per name?
+		require
+			is_open: is_open
+		do
+			Result := safe_count ("SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_patterns_name'") = 1
+		end
+
+feature {NONE} -- Schema Migration
+
+	ensure_unique_pattern_names
+			-- Bring a database made before `patterns.name' was unique up to date:
+			-- keep the newest row of each name, drop the older duplicates and their
+			-- search entries, give every kept pattern exactly one search entry, and
+			-- add the UNIQUE index so a duplicate can never be stored again.
+			-- One transaction: a failure leaves the database as it was (`has_error').
+		require
+			is_open: is_open
+		do
+			if not has_unique_pattern_names then
+				db.begin_transaction
+				if db.is_in_transaction then
+					db.execute ("DELETE FROM patterns WHERE id NOT IN (SELECT MAX(id) FROM patterns GROUP BY name)")
+						-- Search entries of rows that are gone, then any second entry of a kept row
+					db.execute ("DELETE FROM kb_search WHERE content_type = 'pattern' AND content_id NOT IN (SELECT CAST(id AS TEXT) FROM patterns)")
+					db.execute ("DELETE FROM kb_search WHERE content_type = 'pattern' AND rowid NOT IN (SELECT MAX(rowid) FROM kb_search WHERE content_type = 'pattern' GROUP BY content_id)")
+						-- A kept pattern with no search entry gets the one `update_fts5_pattern' would write
+					db.execute ("[
+						INSERT INTO kb_search (content_type, content_id, title, body, tags)
+						SELECT 'pattern', CAST(id AS TEXT), name, COALESCE(description, '') || ' ' || code, 'pattern design'
+						FROM patterns
+						WHERE CAST(id AS TEXT) NOT IN (SELECT content_id FROM kb_search WHERE content_type = 'pattern')
+					]")
+					db.execute ("CREATE UNIQUE INDEX idx_patterns_name ON patterns(name)")
+					db.commit
+				end
+			end
 		end
 
 feature {NONE} -- Schema Creation
@@ -750,15 +790,16 @@ feature -- Pattern Operations
 			is_open: is_open
 			pattern_valid: a_pattern.is_valid
 		do
-				-- `patterns.name' has no UNIQUE constraint (existing databases may hold duplicates),
-				-- so INSERT OR REPLACE alone never replaced anything.
+				-- Remove the stored pattern of this name and its search entry first: the
+				-- UNIQUE index on `patterns.name' (see `ensure_unique_pattern_names') would
+				-- refuse a second row, and INSERT OR REPLACE would orphan the old search entry.
 			db.execute_with_args (
 				"DELETE FROM kb_search WHERE content_type = 'pattern' AND content_id IN (SELECT CAST(id AS TEXT) FROM patterns WHERE name = ?)",
 				<<a_pattern.name>>
 			)
 			db.execute_with_args ("DELETE FROM patterns WHERE name = ?", <<a_pattern.name>>)
 			db.execute_with_args ("[
-				INSERT OR REPLACE INTO patterns
+				INSERT INTO patterns
 				(name, description, code, when_to_use, eiffel_idioms)
 				VALUES (?, ?, ?, ?, ?)
 			]", <<

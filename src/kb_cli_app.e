@@ -333,7 +333,7 @@ feature -- AI Commands
 					al_cfg.enable_ai
 					io.put_string ("AI mode ENABLED%N")
 					if attached al_cfg.active_provider as al_prov then
-						io.put_string ("Using provider: " + prov.out + "%N")
+						io.put_string ("Using provider: " + al_prov.out + "%N")
 					end
 				else
 					io.put_string ("No AI providers configured.%N")
@@ -441,13 +441,13 @@ feature -- AI Commands
 		do
 			ensure_ai_config
 			if attached ai_config as al_cfg then
-				create l_router.make (db, cfg)
+				create l_router.make (db, al_cfg)
 				l_router.set_debug (ai_debug_mode)
 				
 				if l_router.is_ai_available then
 					io.put_string ("Querying with AI (")
 					if attached al_cfg.active_provider as al_prov then
-						io.put_string (prov.out)
+						io.put_string (al_prov.out)
 					end
 					io.put_string (")...%N%N")
 				else
@@ -678,7 +678,7 @@ feature -- Feature Commands
 		do
 			l_feature := db.find_feature (a_class_name, a_feature_name)
 			if attached l_feature as al_feat then
-				show_feature_details (a_class_name, feat)
+				show_feature_details (a_class_name, al_feat)
 			else
 				-- Try partial match
 				l_matches := db.search_features (a_class_name, a_feature_name, 20)
@@ -734,7 +734,7 @@ feature -- Feature Commands
 						i := i + 1
 					end
 					
-					io.put_string ("%NSelect (1-" + cls.features.count.out + ") or Enter to skip: ")
+					io.put_string ("%NSelect (1-" + al_cls.features.count.out + ") or Enter to skip: ")
 					io.read_line
 					l_input := io.last_string.twin
 					l_input.left_adjust
@@ -742,9 +742,9 @@ feature -- Feature Commands
 					
 					if not l_input.is_empty and then l_input.is_integer then
 						l_choice := l_input.to_integer
-						if l_choice >= 1 and l_choice <= cls.features.count then
+						if l_choice >= 1 and l_choice <= al_cls.features.count then
 							io.put_string ("%N")
-							show_feature_details (cls.name, cls.features[l_choice])
+							show_feature_details (al_cls.name, al_cls.features[l_choice])
 						end
 					end
 				end
@@ -973,7 +973,7 @@ feature -- Search Commands
 		do
 			l_class := db.find_class (a_name)
 			if attached l_class as al_cls then
-				show_class_details (cls)
+				show_class_details (al_cls)
 			else
 				-- Try partial match
 				l_matches := db.search_classes (a_name, 20)
@@ -1381,7 +1381,7 @@ Clear Commands:
 			io.put_string ("  - " + db.stats.examples.out + " examples%N")
 			io.put_string ("  - " + db.stats.errors.out + " errors%N")
 			io.put_string ("  - " + db.stats.patterns.out + " patterns%N%N")
-			if l_confirm ("Are you sure you want to delete ALL data?") then
+			if confirm ("Are you sure you want to delete ALL data?") then
 				db.clear_all
 				io.put_string ("All data cleared.%N")
 			else
@@ -1395,7 +1395,7 @@ Clear Commands:
 			io.put_string ("This will delete:%N")
 			io.put_string ("  - " + db.stats.classes.out + " classes%N")
 			io.put_string ("  - " + db.stats.features.out + " features%N%N")
-			if l_confirm ("Are you sure?") then
+			if confirm ("Are you sure?") then
 				db.clear_classes
 				io.put_string ("Classes and features cleared.%N")
 			else
@@ -1407,7 +1407,7 @@ Clear Commands:
 			-- Clear examples
 		do
 			io.put_string ("This will delete " + db.stats.examples.out + " examples.%N%N")
-			if l_confirm ("Are you sure?") then
+			if confirm ("Are you sure?") then
 				db.clear_examples
 				io.put_string ("Examples cleared.%N")
 			else
@@ -1419,7 +1419,7 @@ Clear Commands:
 			-- Clear error codes
 		do
 			io.put_string ("This will delete " + db.stats.errors.out + " error codes.%N%N")
-			if l_confirm ("Are you sure?") then
+			if confirm ("Are you sure?") then
 				db.clear_errors
 				io.put_string ("Error codes cleared.%N")
 			else
@@ -1431,7 +1431,7 @@ Clear Commands:
 			-- Clear patterns
 		do
 			io.put_string ("This will delete " + db.stats.patterns.out + " patterns.%N%N")
-			if l_confirm ("Are you sure?") then
+			if confirm ("Are you sure?") then
 				db.clear_patterns
 				io.put_string ("Patterns cleared.%N")
 			else
@@ -1459,7 +1459,7 @@ Clear Commands:
 				io.put_string ("No classes found for library: " + a_name.out + "%N")
 			else
 				io.put_string ("This will delete " + l_count.out + " classes from library '" + a_name.out + "'.%N%N")
-				if l_confirm ("Are you sure?") then
+				if confirm ("Are you sure?") then
 					db.clear_library (a_name)
 					io.put_string ("Library '" + a_name.out + "' cleared.%N")
 				else
@@ -1468,7 +1468,7 @@ Clear Commands:
 			end
 		end
 
-	l_confirm (a_prompt: STRING): BOOLEAN
+	confirm (a_prompt: STRING): BOOLEAN
 			-- Ask user for confirmation, return True if 'y' or 'yes'
 		local
 			l_input: STRING
@@ -1864,9 +1864,9 @@ feature {NONE} -- Implementation
 		once
 			create l_args
 			if attached l_args.command_name as al_cmd then
-				create l_path.make_from_string (l_cmd)
+				create l_path.make_from_string (al_cmd)
 				if attached l_path.parent as al_parent_dir then
-					l_path := parent_dir.extended ("kb.db")
+					l_path := al_parent_dir.extended ("kb.db")
 					Result := l_path.out
 				else
 					Result := "kb.db"

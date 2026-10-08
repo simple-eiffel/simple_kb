@@ -107,7 +107,7 @@ feature -- 4-Phase AI Cascade
 				Result.set_ai_note ("Could not initialize AI client")
 			else
 				if attached ai_config.active_provider as al_p then
-					Result.set_ai_provider (p)
+					Result.set_ai_provider (al_p)
 				end
 				l_keywords := extract_keywords (l_client, a_query)
 				-- Fallback: if AI returned garbage, use simple query tokenization
@@ -153,7 +153,7 @@ feature {NONE} -- Phase 1: Keywords
 			else
 				last_raw_response := Void
 				if debug_mode and attached l_response.error_message as al_e then
-					io.put_string ("  [DEBUG] AI error: " + e.out + "%N")
+					io.put_string ("  [DEBUG] AI error: " + al_e.out + "%N")
 				end
 				create Result.make_empty
 			end
@@ -293,13 +293,13 @@ feature {NONE} -- AI Client
 			if attached ai_config.active_provider as al_p then
 				if al_p.same_string ("claude") then
 					if attached ai_config.provider_api_key ("claude") as al_k then
-						create {CLAUDE_CLIENT} Result.make_with_api_key (k)
+						create {CLAUDE_CLIENT} Result.make_with_api_key (al_k)
 					end
-				elseif p.same_string ("ollama") then
+				elseif al_p.same_string ("ollama") then
 					create {OLLAMA_CLIENT} Result.make
-				elseif p.same_string ("grok") then
+				elseif al_p.same_string ("grok") then
 					if attached ai_config.provider_api_key ("grok") as al_k then
-						create {GROK_CLIENT} Result.make_with_api_key (k)
+						create {GROK_CLIENT} Result.make_with_api_key (al_k)
 					end
 				end
 			end

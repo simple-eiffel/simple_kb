@@ -317,6 +317,75 @@ feature -- Pattern Tests
 			l_count := db.all_patterns.count
 			create l_seeder.make (db)
 			assert ("no_duplicates", db.all_patterns.count = l_count)
+			assert ("one_search_entry_per_pattern",
+				count_of (db, "SELECT COUNT(*) FROM kb_search WHERE content_type = 'pattern'") = l_count)
+		end
+
+	test_duplicate_pattern_name_refused
+			-- A new database enforces one row per pattern name.
+		do
+			assert ("unique_index_present", db.has_unique_pattern_names)
+			db.db.execute ("INSERT INTO patterns (name, code) VALUES ('dup_probe', 'x')")
+			assert ("first_row_stored", not db.db.has_error)
+			db.db.execute ("INSERT INTO patterns (name, code) VALUES ('dup_probe', 'y')")
+			assert ("second_row_refused", db.db.has_error)
+			assert ("one_row_kept", count_of (db, "SELECT COUNT(*) FROM patterns WHERE name = 'dup_probe'") = 1)
+			db.db.execute ("DELETE FROM patterns WHERE name = 'dup_probe'")
+		end
+
+	test_old_database_migrates_clean
+			-- A database from before `patterns.name' was unique, holding duplicate patterns
+			-- and their search entries, opens clean: one row per name (the newest), one
+			-- search entry per row, the UNIQUE index in place, other search rows untouched.
+			-- Re-opening it changes nothing, and seeding it twice adds no duplicates.
+		local
+			l_path: STRING_32
+			l_file: SIMPLE_FILE
+			l_old: SIMPLE_SQL_DATABASE
+			l_kb: KB_DATABASE
+			l_seeder: KB_PATTERN_SEEDER
+			l_patterns: INTEGER
+			l_deleted: BOOLEAN
+		do
+			l_path := {STRING_32} "kb_migration_test.db"
+			create l_file.make (l_path)
+			if l_file.exists then
+				l_deleted := l_file.delete
+			end
+
+				-- The old layout: no UNIQUE name, a pattern seeded twice, a duplicate
+				-- search entry, an orphan search entry, a pattern with no search entry.
+			create l_old.make (l_path)
+			l_old.execute ("CREATE TABLE patterns (id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT, code TEXT NOT NULL, when_to_use TEXT, eiffel_idioms TEXT)")
+			l_old.execute ("CREATE VIRTUAL TABLE kb_search USING fts5(content_type, content_id, title, body, tags, tokenize='porter unicode61')")
+			l_old.execute ("INSERT INTO patterns (id, name, description, code) VALUES (1, 'singleton', 'one', 'a'), (2, 'factory', 'make', 'b'), (3, 'singleton', 'one', 'a'), (4, 'factory', 'make', 'b'), (5, 'visitor', NULL, 'c')")
+			l_old.execute ("INSERT INTO kb_search (content_type, content_id, title, body, tags) VALUES ('pattern', '1', 'singleton', 'one a', 'pattern design'), ('pattern', '2', 'factory', 'make b', 'pattern design'), ('pattern', '3', 'singleton', 'one a', 'pattern design'), ('pattern', '3', 'singleton', 'one a', 'pattern design'), ('pattern', '4', 'factory', 'make b', 'pattern design'), ('pattern', '99', 'gone', 'x', 'pattern design'), ('error', 'VEEN', 'VEEN', 'unknown identifier', 'error compiler')")
+			assert ("old_layout_built", not l_old.has_error)
+			l_old.close
+
+			create l_kb.make (l_path)
+			assert ("opened", l_kb.is_open and not l_kb.has_error)
+			assert ("unique_index_added", l_kb.has_unique_pattern_names)
+			assert ("one_row_per_name", count_of (l_kb, "SELECT COUNT(*) FROM patterns") = 3 and count_of (l_kb, "SELECT COUNT(DISTINCT name) FROM patterns") = 3)
+			assert ("newest_rows_kept", count_of (l_kb, "SELECT COUNT(*) FROM patterns WHERE id IN (3, 4, 5)") = 3)
+			assert ("one_entry_per_pattern", count_of (l_kb, "SELECT COUNT(*) FROM kb_search WHERE content_type = 'pattern'") = 3 and count_of (l_kb, "SELECT COUNT(DISTINCT content_id) FROM kb_search WHERE content_type = 'pattern'") = 3)
+			assert ("entries_match_rows", count_of (l_kb, "SELECT COUNT(*) FROM kb_search WHERE content_type = 'pattern' AND content_id NOT IN (SELECT CAST(id AS TEXT) FROM patterns)") = 0)
+			assert ("other_entries_untouched", count_of (l_kb, "SELECT COUNT(*) FROM kb_search WHERE content_type = 'error'") = 1)
+			l_kb.close
+
+				-- Re-opening a migrated database is a no-op
+			create l_kb.make (l_path)
+			assert ("reopen_clean", not l_kb.has_error and count_of (l_kb, "SELECT COUNT(*) FROM patterns") = 3)
+
+				-- Seeding twice is idempotent
+			create l_seeder.make (l_kb)
+			l_patterns := count_of (l_kb, "SELECT COUNT(*) FROM patterns")
+			create l_seeder.make (l_kb)
+			assert ("reseed_idempotent", count_of (l_kb, "SELECT COUNT(*) FROM patterns") = l_patterns)
+			assert ("reseed_names_distinct", count_of (l_kb, "SELECT COUNT(DISTINCT name) FROM patterns") = l_patterns)
+			assert ("reseed_entries_match", count_of (l_kb, "SELECT COUNT(*) FROM kb_search WHERE content_type = 'pattern'") = l_patterns)
+			l_kb.close
+			l_deleted := l_file.delete
 		end
 
 feature -- Quick Facade Tests
@@ -753,6 +822,21 @@ feature -- Edge Case Tests
 			l_descendants := db.get_descendants ("NONEXISTENT_CLASS")
 			assert ("no_ancestors", l_ancestors.is_empty)
 			assert ("no_descendants", l_descendants.is_empty)
+		end
+
+feature {NONE} -- Query Helper
+
+	count_of (a_kb: KB_DATABASE; a_sql: STRING): INTEGER
+			-- The single number `a_sql' selects from `a_kb'; 0 when it selects nothing.
+		require
+			open: a_kb.is_open
+		local
+			l_result: SIMPLE_SQL_RESULT
+		do
+			l_result := a_kb.db.query (a_sql)
+			if not l_result.is_empty and then attached l_result.rows.first.item (1) as al_value then
+				Result := al_value.out.to_integer
+			end
 		end
 
 feature {NONE} -- Assertion Helper

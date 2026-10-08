@@ -78,13 +78,13 @@ feature -- Status
 
 feature -- Setters
 
-	set_message_id (a_v: STRING_32) do message_id := v.twin end
-	set_subject (a_v: STRING_32) do subject := v.twin end
-	set_from_addr (a_v: STRING_32) do from_addr := v.twin end
-	set_from_name (a_v: STRING_32) do from_name := v.twin end
-	set_date_str (a_v: STRING_32) do date_str := v.twin end
-	set_body (a_v: STRING_32) do body := v.twin end
-	set_in_reply_to (a_v: STRING_32) do in_reply_to := v.twin end
+	set_message_id (a_v: STRING_32) do message_id := a_v.twin end
+	set_subject (a_v: STRING_32) do subject := a_v.twin end
+	set_from_addr (a_v: STRING_32) do from_addr := a_v.twin end
+	set_from_name (a_v: STRING_32) do from_name := a_v.twin end
+	set_date_str (a_v: STRING_32) do date_str := a_v.twin end
+	set_body (a_v: STRING_32) do body := a_v.twin end
+	set_in_reply_to (a_v: STRING_32) do in_reply_to := a_v.twin end
 
 	add_reference (a_v: STRING_32)
 		do

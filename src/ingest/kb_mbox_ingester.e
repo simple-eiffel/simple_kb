@@ -98,7 +98,7 @@ feature {NONE} -- Threading
 				l_thread_id := get_thread_id (msg)
 
 				if threads.has (l_thread_id) then
-					if attached threads.item (l_thread_id) as al_l_existing then l_existing.extend (msg) end
+					if attached threads.item (l_thread_id) as al_l_existing then al_l_existing.extend (msg) end
 				else
 					create l_thread.make (5)
 					l_thread.extend (msg)
@@ -155,7 +155,7 @@ feature {NONE} -- Q&A Extraction
 					end
 
 					if attached l_best_answer as a and then l_best_score > 10 then
-						Result.extend ([q, a])
+						Result.extend ([al_q, a])
 					end
 				end
 			end
