@@ -846,8 +846,7 @@ feature {NONE} -- Implementation
 			l_class: KB_CLASS_INFO
 			l_class_name: STRING
 			l_upper: STRING
-			i, j, k: INTEGER
-			l_in_feature: BOOLEAN
+			i, j: INTEGER
 			l_feat_name: STRING
 			l_feature: KB_FEATURE_INFO
 		do

@@ -730,7 +730,6 @@ feature -- Ingester Regression Tests (Parser Issues)
 	test_minimal_class_parsing
 			-- Test parsing of minimal class with no features (caused crash in sed_meta_model.e)
 		local
-			l_ingester: KB_INGESTER
 			l_parser: SIMPLE_EIFFEL_PARSER
 			l_ast: EIFFEL_AST
 			l_source: STRING
