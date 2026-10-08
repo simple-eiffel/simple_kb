@@ -64,6 +64,8 @@ feature -- Tests
 			run_test (agent lib_tests.test_add_pattern, "test_add_pattern")
 			run_test (agent lib_tests.test_get_pattern, "test_get_pattern")
 			run_test (agent lib_tests.test_pattern_seeder, "test_pattern_seeder")
+			run_test (agent lib_tests.test_seed_text_not_renamed, "test_seed_text_not_renamed")
+			run_test (agent lib_tests.test_reseed_replaces_patterns, "test_reseed_replaces_patterns")
 
 			io.put_string ("%NQuick Facade Tests:%N")
 			run_test (agent lib_tests.test_kb_quick_search, "test_kb_quick_search")

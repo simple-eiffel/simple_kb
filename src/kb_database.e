@@ -744,11 +744,19 @@ feature -- Pattern Operations
 		end
 
 	add_pattern (a_pattern: KB_PATTERN)
-			-- Add pattern
+			-- Add pattern, replacing any stored pattern of the same name (and its search entry), so
+			-- re-running `kb seed' refreshes patterns instead of adding duplicates.
 		require
 			is_open: is_open
 			pattern_valid: a_pattern.is_valid
 		do
+				-- `patterns.name' has no UNIQUE constraint (existing databases may hold duplicates),
+				-- so INSERT OR REPLACE alone never replaced anything.
+			db.execute_with_args (
+				"DELETE FROM kb_search WHERE content_type = 'pattern' AND content_id IN (SELECT CAST(id AS TEXT) FROM patterns WHERE name = ?)",
+				<<a_pattern.name>>
+			)
+			db.execute_with_args ("DELETE FROM patterns WHERE name = ?", <<a_pattern.name>>)
 			db.execute_with_args ("[
 				INSERT OR REPLACE INTO patterns
 				(name, description, code, when_to_use, eiffel_idioms)

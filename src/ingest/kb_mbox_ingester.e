@@ -5,7 +5,7 @@ note
 		Processes mbox files to extract Q&A pairs:
 		1. Parse mbox file into messages
 		2. Group messages into threads (via In-Reply-To/References)
-		3. Identify l_question/answer pairs
+		3. Identify question/answer pairs
 		4. Store as FAQs in the knowledge base
 	]"
 	author: "Simple Eiffel"

@@ -276,6 +276,49 @@ feature -- Pattern Tests
 			end
 		end
 
+	test_seed_text_not_renamed
+			-- Seeded examples carry their original text, not the 2026-02 rename damage
+			-- ("as al_obj then obj...", "a_other: POINT").
+		local
+			l_errors: KB_ERROR_SEEDER
+			l_patterns: KB_PATTERN_SEEDER
+			l_found: BOOLEAN
+		do
+			create l_errors.make (db)
+			create l_patterns.make (db)
+			if attached db.get_error ("VUTA") as l_vuta then
+				across l_vuta.fixes as ic loop
+					if ic.example.has_substring ("if attached my_object as obj then obj.do_something end") then
+						l_found := True
+					end
+				end
+			end
+			assert ("vuta_fix_text_restored", l_found)
+			if attached db.get_error ("VOMB") as l_vomb then
+				assert ("vomb_good_code_restored", l_vomb.examples_json.has_substring ("if attached x as lx then"))
+				assert ("vomb_no_al_prefix", not l_vomb.examples_json.has_substring ("al_lx"))
+			else
+				assert ("vomb_found", False)
+			end
+			if attached db.get_pattern ("expanded_value") as l_value then
+				assert ("pattern_code_restored", l_value.code.has_substring ("distance (other: POINT)"))
+			else
+				assert ("expanded_value_found", False)
+			end
+		end
+
+	test_reseed_replaces_patterns
+			-- Seeding twice refreshes patterns instead of duplicating them.
+		local
+			l_seeder: KB_PATTERN_SEEDER
+			l_count: INTEGER
+		do
+			create l_seeder.make (db)
+			l_count := db.all_patterns.count
+			create l_seeder.make (db)
+			assert ("no_duplicates", db.all_patterns.count = l_count)
+		end
+
 feature -- Quick Facade Tests
 
 	test_kb_quick_search

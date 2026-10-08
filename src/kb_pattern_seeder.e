@@ -568,14 +568,14 @@ feature -- Initialization
 
 feature -- Operations
 
-	distance (a_other: POINT): REAL_64
+	distance (other: POINT): REAL_64
 		do
-			Result := ((x - a_other.x)^2 + (y - a_other.y)^2).sqrt
+			Result := ((x - other.x)^2 + (y - other.y)^2).sqrt
 		end
 
-	plus alias "+" (a_other: POINT): POINT
+	plus alias "+" (other: POINT): POINT
 		do
-			Result.make (x + a_other.x, y + a_other.y)
+			Result.make (x + other.x, y + other.y)
 		end
 
 invariant
@@ -629,8 +629,8 @@ task.execute_async (
 	agent do
 		-- work here
 	end,
-	agent (a_success: BOOLEAN) do
-		if a_success then print ("Done!") end
+	agent (success: BOOLEAN) do
+		if success then print ("Done!") end
 	end
 )
 
@@ -714,15 +714,15 @@ end
 		do
 			create l_pattern.make ("attachment_check", "[
 -- Pattern 1: check attached with alias
-if attached find_user (email) as al_user then
+if attached find_user (email) as user then
 	-- user is attached (non-void) in this scope
-	print (al_user.name)
+	print (user.name)
 end
 
 -- Pattern 2: Object test
-if attached {DATABASE_ERROR} last_error as al_db_err then
+if attached {DATABASE_ERROR} last_error as db_err then
 	-- Type narrowing: db_err is DATABASE_ERROR
-	print (al_db_err.sql_code.out)
+	print (db_err.sql_code.out)
 end
 
 -- Pattern 3: Detachable to attached conversion
@@ -740,7 +740,7 @@ get_or_default (a_key: STRING): VALUE
 
 -- Pattern 4: Certified Attachment Pattern (CAP)
 -- When you KNOW it's attached but compiler doesn't:
-check attached my_detachable as al_x then
+check attached my_detachable as x then
 	-- x is attached here
 	-- Runtime check in debug, assertion in production
 end
