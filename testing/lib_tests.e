@@ -468,7 +468,7 @@ feature -- Ingester Tests
 		do
 			create l_ingester.make (db)
 			-- Parse a known file from simple_kb itself
-			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_result.e")
+			l_ingester.ingest_file ("simple_kb", fleet_path ("simple_kb/src/kb_result.e"))
 			assert ("file_processed", l_ingester.files_processed = 1)
 			assert ("class_indexed", l_ingester.classes_indexed >= 1)
 
@@ -484,7 +484,7 @@ feature -- Ingester Tests
 			l_stats: TUPLE [files, classes, features, errors: INTEGER]
 		do
 			create l_ingester.make (db)
-			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_pattern.e")
+			l_ingester.ingest_file ("simple_kb", fleet_path ("simple_kb/src/kb_pattern.e"))
 			l_stats := l_ingester.stats
 			assert ("files_counted", l_stats.files >= 1)
 			assert ("classes_counted", l_stats.classes >= 1)
@@ -508,7 +508,7 @@ feature -- Rosetta Importer Tests
 			l_examples: ARRAYED_LIST [KB_EXAMPLE]
 		do
 			create l_importer.make (db)
-			l_importer.import_all ("D:/prod/simple_rosetta")
+			l_importer.import_all (fleet_path ("simple_rosetta"))
 			assert ("examples_imported", l_importer.examples_imported > 100)
 
 			-- Search for imported examples
@@ -650,7 +650,7 @@ feature -- Ingester Regression Tests (Parser Issues)
 		do
 			create l_ingester.make (db)
 			-- Parse KB_RESULT which should have multiple features
-			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_result.e")
+			l_ingester.ingest_file ("simple_kb", fleet_path ("simple_kb/src/kb_result.e"))
 			assert ("file_processed", l_ingester.files_processed = 1)
 
 			l_class := db.find_class ("KB_RESULT")
@@ -672,9 +672,9 @@ feature -- Ingester Regression Tests (Parser Issues)
 		do
 			create l_ingester.make (db)
 			-- Parse multiple files from simple_kb
-			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_result.e")
-			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_class_info.e")
-			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_pattern.e")
+			l_ingester.ingest_file ("simple_kb", fleet_path ("simple_kb/src/kb_result.e"))
+			l_ingester.ingest_file ("simple_kb", fleet_path ("simple_kb/src/kb_class_info.e"))
+			l_ingester.ingest_file ("simple_kb", fleet_path ("simple_kb/src/kb_pattern.e"))
 
 			if l_ingester.classes_indexed > 0 then
 				l_avg := l_ingester.features_indexed / l_ingester.classes_indexed
@@ -697,7 +697,7 @@ feature -- Ingester Regression Tests (Parser Issues)
 			               " errors=" + l_ingester.errors_count.out + "%N")
 			l_ingester.set_verbose (True) -- Enable tracing
 			-- Parse simple_kb's own source - should have near 0% errors
-			l_ingester.ingest_library ("simple_kb", "D:/prod/simple_kb/src")
+			l_ingester.ingest_library ("simple_kb", fleet_path ("simple_kb/src"))
 
 			io.put_string ("%N    [AFTER] files=" + l_ingester.files_processed.out +
 			               " errors=" + l_ingester.errors_count.out +
@@ -723,7 +723,7 @@ feature -- Ingester Regression Tests (Parser Issues)
 			l_ingester.ingest_file ("test", "D:/nonexistent/file.e")
 			assert ("error_counted", l_ingester.errors_count >= 1)
 			-- Ingester should still be functional
-			l_ingester.ingest_file ("simple_kb", "D:/prod/simple_kb/src/kb_result.e")
+			l_ingester.ingest_file ("simple_kb", fleet_path ("simple_kb/src/kb_result.e"))
 			assert ("still_works", l_ingester.files_processed >= 1)
 		end
 
@@ -847,6 +847,18 @@ feature {NONE} -- Assertion Helper
 		do
 			if not a_condition then
 				(create {EXCEPTIONS}).raise ("Assertion failed: " + a_tag)
+			end
+		end
+
+feature {NONE} -- Fixtures
+
+	fleet_path (a_tail: STRING): STRING
+			-- `a_tail' under the folder holding the simple_* libraries.
+		do
+			if attached (create {EXECUTION_ENVIRONMENT}).item ("SIMPLE_EIFFEL") as l_root then
+				Result := l_root.to_string_8 + "/" + a_tail
+			else
+				Result := a_tail
 			end
 		end
 
