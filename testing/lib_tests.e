@@ -106,6 +106,22 @@ feature -- Error Tests
 			assert ("has_ecma", l_formatted.has_substring ("8.19.17"))
 		end
 
+feature -- Console Output Tests
+
+	test_console_symbols_become_ascii
+			-- The answer's arrows and comparison signs print as ASCII (they used to pass through:
+			-- the source literals were read as Latin-1 and never matched a real arrow).
+		local
+			l_result: KB_QUERY_RESULT
+			l_out: STRING_32
+		do
+			create l_result.make ("symbols")
+			l_result.set_synthesized_answer ({STRING_32} "a %/8594/ b %/8592/ c %/8728/ d %/8805/ e %/8804/ f %/8800/ g %/8226/ h")
+			l_out := l_result.formatted
+			assert ("arrows become ascii", l_out.has_substring ({STRING_32} "a -> b <- c o d >= e <= f /= g * h"))
+			assert ("no right arrow left", not l_out.has ('%/8594/'))
+		end
+
 feature -- Search Tests
 
 	test_search_basic

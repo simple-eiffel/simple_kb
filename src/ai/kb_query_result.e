@@ -210,16 +210,17 @@ feature -- Display
 feature {NONE} -- Helpers
 
 	sanitize_for_console (a_s: STRING_32): STRING_32
-			-- Replace problematic Unicode characters with ASCII equivalents
+			-- Replace problematic Unicode characters with ASCII equivalents.
+			-- Written by code point: a literal arrow in a file without a BOM is read as Latin-1 and never matches.
 		do
 			Result := a_s.twin
-			Result.replace_substring_all ({STRING_32} "→", {STRING_32} "->")
-			Result.replace_substring_all ({STRING_32} "←", {STRING_32} "<-")
-			Result.replace_substring_all ({STRING_32} "∘", {STRING_32} "o")
-			Result.replace_substring_all ({STRING_32} "≥", {STRING_32} ">=")
-			Result.replace_substring_all ({STRING_32} "≤", {STRING_32} "<=")
-			Result.replace_substring_all ({STRING_32} "≠", {STRING_32} "/=")
-			Result.replace_substring_all ({STRING_32} "•", {STRING_32} "*")
+			Result.replace_substring_all ({STRING_32} "%/8594/", {STRING_32} "->")
+			Result.replace_substring_all ({STRING_32} "%/8592/", {STRING_32} "<-")
+			Result.replace_substring_all ({STRING_32} "%/8728/", {STRING_32} "o")
+			Result.replace_substring_all ({STRING_32} "%/8805/", {STRING_32} ">=")
+			Result.replace_substring_all ({STRING_32} "%/8804/", {STRING_32} "<=")
+			Result.replace_substring_all ({STRING_32} "%/8800/", {STRING_32} "/=")
+			Result.replace_substring_all ({STRING_32} "%/8226/", {STRING_32} "*")
 		end
 
 invariant
