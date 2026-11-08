@@ -11,6 +11,7 @@
 [![Design by Contract](https://img.shields.io/badge/DbC-enforced-orange.svg)]()
 [![FTS5](https://img.shields.io/badge/FTS5-BM25-green.svg)]()
 [![AI](https://img.shields.io/badge/AI-RAG%20enabled-purple.svg)]()
+![Windows: tests pass](https://img.shields.io/badge/Windows-tests%20pass-0078D6?logo=windows&logoColor=white) ![Linux: tests pass](https://img.shields.io/badge/Linux-tests%20pass-FCC624?logo=linux&logoColor=black) ![macOS: tests pass](https://img.shields.io/badge/macOS-tests%20pass-000000?logo=apple&logoColor=white)
 
 Searchable Eiffel knowledge base with FTS5 full-text search, AI-enhanced FAQ matching, and comprehensive compiler error documentation.
 
