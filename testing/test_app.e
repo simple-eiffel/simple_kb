@@ -109,6 +109,7 @@ feature -- Tests
 			io.put_string ("%NEdge Case Tests:%N")
 			run_test (agent lib_tests.test_class_no_parents, "test_class_no_parents")
 			run_test (agent lib_tests.test_unknown_class_ancestry, "test_unknown_class_ancestry")
+			run_test (agent lib_tests.test_console_symbols_become_ascii, "test_console_symbols_become_ascii")
 		end
 
 	run_test (a_test: PROCEDURE; a_name: STRING)
